@@ -25,6 +25,7 @@ import AdminTicketPage from "../pages/tickets/AdminTicketPage";
 import UserDashboardPage from "../pages/user/UserDashboardPage";
 
 const USER_ROLES = ["STUDENT", "FACULTY", "STAFF"];
+const USER_REPORT_ROLES = ["FACULTY", "STAFF"];
 const ALL_ROLES = ["ADMIN", "TECHNICIAN", ...USER_ROLES];
 const ADMIN_ROLES = ["ADMIN"];
 const TECHNICIAN_ROLES = ["TECHNICIAN"];
@@ -149,7 +150,7 @@ function AppRoutes() {
         <Route
           path="/user/reports"
           element={(
-            <ProtectedRoute allowedRoles={USER_ROLES}>
+            <ProtectedRoute allowedRoles={USER_REPORT_ROLES} fallback="/user/dashboard">
               <Reports />
             </ProtectedRoute>
           )}

@@ -1,34 +1,29 @@
 import { useMemo, useState } from "react";
 import { Bell, ChevronDown, LogOut, Search, Settings, User } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../hooks/useNotifications";
+import { getRoleSearchItems } from "./navigationConfig";
 
 export default function DashboardTopbar() {
   const { user, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const navigate = useNavigate();
+  const location = useLocation();
   const [query, setQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const basePath = user?.role === "ADMIN" ? "/admin" : user?.role === "TECHNICIAN" ? "/technician" : "/user";
-  const isUserRole = ["STUDENT", "FACULTY", "STAFF"].includes(user?.role);
 
   const results = useMemo(() => {
     const searchItems = [
-      { label: "Dashboard", path: `${basePath}/dashboard` },
-      { label: "Resources", path: `${basePath}/resources` },
-      { label: "Available Resources", path: `${basePath}/available` },
-      { label: "Resource Reports", path: `${basePath}/reports` },
-      ...(user?.role === "ADMIN" ? [{ label: "Booking Management", path: "/admin/bookings" }] : []),
-      ...(isUserRole ? [{ label: "My Bookings", path: "/my-bookings" }] : []),
+      ...getRoleSearchItems(user?.role, location.pathname),
       { label: "Notifications", path: "/notifications" },
       { label: "Profile", path: "/profile" },
     ];
     const value = query.trim().toLowerCase();
     if (!value) return [];
     return searchItems.filter((item) => item.label.toLowerCase().includes(value)).slice(0, 5);
-  }, [basePath, isUserRole, query, user?.role]);
+  }, [location.pathname, query, user?.role]);
 
   const submitSearch = (event) => {
     event.preventDefault();

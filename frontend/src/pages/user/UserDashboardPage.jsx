@@ -6,6 +6,7 @@ const detail = (value, fallback = "Not added") => value || fallback;
 
 const UserDashboardPage = () => {
     const { user } = useAuth();
+    const showReports = ["FACULTY", "STAFF"].includes(user?.role);
 
     return (
         <section className="resource-page">
@@ -46,7 +47,8 @@ const UserDashboardPage = () => {
                     <div className="mt-4 space-y-3">
                         <RoleLink to="/user/available" label="Available resources" />
                         <RoleLink to="/my-bookings" label="My bookings" />
-                        <RoleLink to="/user/reports" label="Resource reports" />
+                        <RoleLink to="/tickets" label="Raise a ticket" />
+                        {showReports && <RoleLink to="/user/reports" label="Resource reports" />}
                         <RoleLink to="/profile" label="Edit profile" />
                     </div>
                 </div>
