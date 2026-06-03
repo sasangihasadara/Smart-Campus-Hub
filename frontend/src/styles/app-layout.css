@@ -1,0 +1,6 @@
+/* Layout and structure styles */
+.max-w-7xl {
+  max-width: 80rem;
+  margin-left: auto;
+  margin-right: auto;
+}

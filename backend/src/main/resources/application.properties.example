@@ -1,0 +1,35 @@
+# ============================================
+# Smart Campus Operations Hub - Backend Configuration Template
+# ============================================
+
+# Server Port
+server.port=8081
+
+# Application Name
+spring.application.name=smart-campus
+
+# Database Configuration
+# Defaults to H2 for local development. Override with MySQL values if desired.
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:h2:mem:smartcampus;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME:sa}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD:}
+spring.datasource.driver-class-name=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.h2.Driver}
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=${SPRING_JPA_DIALECT:org.hibernate.dialect.H2Dialect}
+
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+
+# OAuth2 Google Login
+# Obtain these from Google Cloud Console (https://console.cloud.google.com/)
+spring.security.oauth2.client.registration.google.client-id=YOUR_GOOGLE_CLIENT_ID
+spring.security.oauth2.client.registration.google.client-secret=YOUR_GOOGLE_CLIENT_SECRET
+spring.security.oauth2.client.registration.google.scope=email,profile
+
+# Ticket attachment storage
+app.upload.ticket-images-dir=backend/uploads/tickets
+
+# JWT
+app.jwt.secret=CHANGE_THIS_TO_A_LONG_RANDOM_SECRET
+app.jwt.expiration-ms=86400000

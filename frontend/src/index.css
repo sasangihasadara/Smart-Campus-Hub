@@ -1,0 +1,76 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=Syne:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@import './styles/app-layout.css';
+@import './styles/educator.css';
+@import './styles/resource-module.css';
+
+@theme {
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  --color-primary-950: #172554;
+  --color-primary: var(--color-primary-600);
+  
+  --font-sans: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Outfit', 'Inter', sans-serif;
+  
+  --grid-cols-auto: repeat(auto-fit, minmax(200px, 1fr));
+  --spacing-section-height: 500px;
+  
+  --text-default: 15px;
+  --text-default--line-height: 21px;
+  
+  --text-course-details-heading-small: 26px;
+  --text-course-details-heading-small--line-height: 36px;
+  
+  --text-course-details-heading-large: 36px;
+  --text-course-details-heading-large--line-height: 44px;
+  
+  --text-home-heading-small: 28px;
+  --text-home-heading-small--line-height: 34px;
+  
+  --text-home-heading-large: 48px;
+  --text-home-heading-large--line-height: 56px;
+
+  --width-course-card: 424px;
+  
+  --shadow-custom-card: 0px 4px 15px 2px rgba(0, 0, 0, 0.1);
+  --radius-2xl: 1rem;
+}
+
+:root {
+  --font-sans: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-gray-50 text-gray-800 transition-colors duration-300;
+    min-height: 100vh;
+  }
+}
+
+/* Custom transitions and utility classes */
+.hover-card {
+  @apply transition-all duration-300 hover:shadow-md hover:-translate-y-1;
+}
+
+.glass-morphism {
+  @apply bg-white/80 backdrop-blur-md border border-white/20;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm;
+  }
+}
+

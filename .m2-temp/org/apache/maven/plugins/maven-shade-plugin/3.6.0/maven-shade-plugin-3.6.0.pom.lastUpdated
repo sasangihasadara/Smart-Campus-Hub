@@ -1,0 +1,4 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Mon Apr 20 22:33:47 IST 2026
+@default-central-https\://repo.maven.apache.org/maven2/.lastUpdated=1776704627781
+https\://repo.maven.apache.org/maven2/.error=Could not transfer artifact org.apache.maven.plugins\:maven-shade-plugin\:pom\:3.6.0 from/to central (https\://repo.maven.apache.org/maven2)\: E\:\\PAFF\\it3030-paf-2026-smart-campus-group26\\.m2-temp\\org\\apache\\maven\\plugins\\maven-shade-plugin\\3.6.0\\maven-shade-plugin-3.6.0.pom.6584735511599530625.tmp.8371960340375925811.tmp

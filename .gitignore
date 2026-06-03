@@ -1,0 +1,53 @@
+# ============================================
+# Smart Campus Operations Hub - Root Gitignore
+# ============================================
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+
+# --- IDEs & Editors ---
+.vscode/
+.idea/
+*.iws
+*.iml
+*.ipr
+*.sw?
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# --- Build Artifacts ---
+/backend/target/
+/backend/build/
+/frontend/dist/
+/frontend/dist-ssr/
+/frontend/node_modules/
+
+# --- Spring Boot ---
+/backend/src/main/**/target/
+/backend/src/main/**/build/
+/backend/.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# --- Frontend (Node/Vite) ---
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Environment & Secrets ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+/backend/src/main/resources/application-local.properties
+/backend/src/main/resources/application.properties
+!/backend/src/main/resources/application.properties.example
+!/frontend/.env.example
