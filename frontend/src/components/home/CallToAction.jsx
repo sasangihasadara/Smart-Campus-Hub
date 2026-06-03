@@ -1,27 +1,52 @@
-import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import React from "react";
+import { ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const CallToAction = () => {
-    return (
-        <section className="py-32 px-7 bg-white">
-            <div className="max-w-4xl mx-auto text-center space-y-8">
-                <h2 className="text-3xl md:text-5xl font-bold text-gray-900 tracking-tight font-heading leading-tight animate-fade-in-up">
-                    Streamline your campus operations today
-                </h2>
-                <p className="text-sm md:text-base text-slate-500/80 animate-fade-in-up animation-delay-200 font-medium">
-                    Take control of your facility bookings and maintenance requests. Join the Smart Campus Operations Hub to improve efficiency and resource allocation.
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-fade-in-up animation-delay-400">
-                    <button className="bg-blue-600 text-white px-12 py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/25 hover:scale-105 active:scale-95">
-                        Access System
-                    </button>
-                    <button className="flex items-center gap-2 font-bold text-gray-700 hover:text-blue-600 transition-colors group">
-                        Learn more <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                    </button>
-                </div>
+  return (
+    <section className="bg-slate-950 px-4 py-24 text-white md:px-14">
+      <div className="mx-auto max-w-7xl">
+        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 p-8 shadow-2xl shadow-blue-950/25 md:p-12">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-sky-200">
+              <Sparkles size={14} />
+              Ready for deployment
             </div>
-        </section>
-    );
+
+            <h2 className="mt-6 text-3xl font-extrabold tracking-tight md:text-5xl font-heading">
+              Move from demo mode to a campus-ready product
+            </h2>
+
+            <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">
+              The structure is now cleaner, role-aware, and closer to a production system. Use the portal entry points to test real user journeys and present the project confidently.
+            </p>
+
+            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:bg-slate-100"
+              >
+                Open student portal
+                <ArrowRight size={16} />
+              </Link>
+              <Link
+                to="/resources"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-7 py-3.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-white/10"
+              >
+                Browse resources
+                <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-slate-300">
+              <LockKeyhole size={14} />
+              Role-based access, clean dashboards, and workflow-focused navigation
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 };
 
 export default CallToAction;

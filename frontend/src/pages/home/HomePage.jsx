@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, BarChart3, Download, PieChart, Star } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
 import Hero from '../../components/home/Hero';
+import RoleAccessSection from '../../components/home/RoleAccessSection';
 import FeaturesSection from '../../components/home/FeaturesSection';
 import TestimonialsSection from '../../components/home/TestimonialsSection';
 import CallToAction from '../../components/home/CallToAction';
@@ -14,6 +15,8 @@ const HomePage = () => {
             <Navbar />
             
             <Hero />
+
+            <RoleAccessSection />
 
             <FeaturesSection />
 
