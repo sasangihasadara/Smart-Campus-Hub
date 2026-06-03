@@ -25,6 +25,11 @@ export const loginPortalUser = async ({ email, password }) => {
     return response.data.data;
 };
 
+export const loginWithGoogleToken = async (idToken) => {
+    const response = await api.post("/auth/google", { idToken });
+    return response.data.data;
+};
+
 export const getCurrentUser = async () => {
     const response = await api.get("/auth/me");
     return response.data.data;

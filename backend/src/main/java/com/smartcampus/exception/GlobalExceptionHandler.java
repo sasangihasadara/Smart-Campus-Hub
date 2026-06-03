@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Comparator;
 import java.util.stream.Collectors;
 
@@ -33,6 +35,11 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ErrorResponseDTO> handleForbidden(ForbiddenException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request);
@@ -40,20 +47,28 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDTO> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
+        Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
                 .sorted(Comparator.comparing(FieldError::getField))
-                .map(err -> err.getField() + ": " + err.getDefaultMessage())
-                .collect(Collectors.joining("; "));
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, message, request);
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        FieldError::getDefaultMessage,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Validation failed", fieldErrors, request);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponseDTO> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
-        String message = ex.getConstraintViolations().stream()
+        Map<String, String> fieldErrors = ex.getConstraintViolations().stream()
                 .sorted(Comparator.comparing(v -> v.getPropertyPath().toString()))
-                .map(v -> v.getPropertyPath().toString() + ": " + v.getMessage())
-                .collect(Collectors.joining("; "));
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, message, request);
+                .collect(Collectors.toMap(
+                        v -> v.getPropertyPath().toString(),
+                        jakarta.validation.ConstraintViolation::getMessage,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Validation failed", fieldErrors, request);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
@@ -89,11 +104,17 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponseDTO> buildErrorResponse(HttpStatus status, String message, HttpServletRequest request) {
+        return buildErrorResponse(status, message, null, request);
+    }
+
+    private ResponseEntity<ErrorResponseDTO> buildErrorResponse(HttpStatus status, String message, Object data, HttpServletRequest request) {
         ErrorResponseDTO error = ErrorResponseDTO.builder()
+                .success(false)
                 .timestamp(LocalDateTime.now())
                 .status(status.value())
                 .error(status.getReasonPhrase())
                 .message(message)
+                .data(data)
                 .path(request.getRequestURI())
                 .build();
         return new ResponseEntity<>(error, status);

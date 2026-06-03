@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import SearchBar from '../common/SearchBar';
 
 const Hero = () => {
@@ -28,6 +29,18 @@ const Hero = () => {
                 
                 <div className="w-full flex justify-center animate-fade-in-up animation-delay-400 font-sans mt-10">
                     <SearchBar />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-3 animate-fade-in-up animation-delay-500">
+                    <Link to="/login" className="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700">
+                        User portal
+                    </Link>
+                    <Link to="/admin-login" className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
+                        Admin portal
+                    </Link>
+                    <Link to="/technician-login" className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
+                        Technician portal
+                    </Link>
                 </div>
             </div>
         </header>

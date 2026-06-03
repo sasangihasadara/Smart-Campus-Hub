@@ -9,13 +9,25 @@ import com.smartcampus.enums.UserRole;
 import com.smartcampus.model.User;
 import com.smartcampus.repository.UserRepository;
 import com.smartcampus.security.JwtService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class UserService {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+    private static final String GOOGLE_TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token=";
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -66,6 +78,32 @@ public class UserService {
         }
 
         return authResponse;
+    }
+
+    public AuthResponse loginWithGoogleToken(String idToken) {
+        if (idToken == null || idToken.isBlank()) {
+            throw new IllegalArgumentException("Google sign-in token is required");
+        }
+
+        GoogleProfile profile = verifyGoogleToken(idToken.trim());
+        String email = profile.email().trim().toLowerCase();
+
+        User user = userRepository.findByEmail(email)
+                .map(existing -> {
+                    if (existing.getRole() == UserRole.ADMIN || existing.getRole() == UserRole.TECHNICIAN) {
+                        throw new IllegalArgumentException("Google sign-in is available for user accounts only");
+                    }
+                    return existing;
+                })
+                .orElseGet(() -> userRepository.save(User.builder()
+                        .name(resolveDisplayName(profile))
+                        .email(email)
+                        .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                        .picture(profile.picture())
+                        .role(UserRole.STUDENT)
+                        .build()));
+
+        return toAuthResponse(user);
     }
 
     public UserResponse getByEmail(String email) {
@@ -145,5 +183,61 @@ public class UserService {
 
     private String clean(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private GoogleProfile verifyGoogleToken(String idToken) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(GOOGLE_TOKEN_INFO_URL + idToken))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() != 200) {
+                throw new IllegalArgumentException("Google sign-in could not be verified");
+            }
+
+            Map<String, Object> payload = OBJECT_MAPPER.readValue(response.body(), Map.class);
+            Object verifiedValue = payload.get("email_verified");
+            boolean emailVerified = verifiedValue instanceof Boolean bool
+                    ? bool
+                    : Boolean.parseBoolean(String.valueOf(verifiedValue));
+
+            if (!emailVerified) {
+                throw new IllegalArgumentException("Google account email is not verified");
+            }
+
+            String email = stringValue(payload.get("email"));
+            if (email == null || email.isBlank()) {
+                throw new IllegalArgumentException("Google account email is missing");
+            }
+
+            return new GoogleProfile(
+                    email,
+                    stringValue(payload.get("name")),
+                    stringValue(payload.get("picture"))
+            );
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Google sign-in failed. Please try again.");
+        }
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? null : String.valueOf(value).trim();
+    }
+
+    private String resolveDisplayName(GoogleProfile profile) {
+        if (profile.name() != null && !profile.name().isBlank()) {
+            return profile.name();
+        }
+
+        String email = profile.email();
+        int atIndex = email.indexOf('@');
+        return atIndex > 0 ? email.substring(0, atIndex) : email;
+    }
+
+    private record GoogleProfile(String email, String name, String picture) {
     }
 }

@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
 import RoleLoginPage from "./RoleLoginPage";
-import { loginPortalUser } from "../../services/authService";
+import { loginPortalUser, loginWithGoogleToken } from "../../services/authService";
 
 const LoginPage = () => {
     const navigate = useNavigate();
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
     return (
         <RoleLoginPage
@@ -14,6 +15,8 @@ const LoginPage = () => {
             submitLabel="Sign in as user"
             loginRequest={loginPortalUser}
             onSuccess={() => navigate("/user/dashboard")}
+            googleClientId={googleClientId}
+            googleLoginRequest={loginWithGoogleToken}
             footer={(
                 <p className="mt-6 text-center text-sm text-gray-600">
                     Need an account?{" "}

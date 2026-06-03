@@ -27,6 +27,9 @@ spring.security.oauth2.client.registration.google.client-id=YOUR_GOOGLE_CLIENT_I
 spring.security.oauth2.client.registration.google.client-secret=YOUR_GOOGLE_CLIENT_SECRET
 spring.security.oauth2.client.registration.google.scope=email,profile
 
+# The frontend exchanges the Google ID token for a local JWT using /api/auth/google
+# Google sign-in is intended for user portal accounts.
+
 # Ticket attachment storage
 app.upload.ticket-images-dir=backend/uploads/tickets
 

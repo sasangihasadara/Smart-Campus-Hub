@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { CalendarCheck2, RotateCcw, Search } from "lucide-react";
+import { createSearchParams, useNavigate } from "react-router-dom";
 import { useResources } from "../../context/ResourceContext";
-import BookingModal from "../../components/booking/BookingModal";
 import {
   RESOURCE_TYPES,
   filterResources,
@@ -17,16 +17,9 @@ const DEFAULT_FILTERS = {
 };
 
 export default function AvailableResourcesPage() {
-  const { resources, loading, reloadResources } = useResources();
+  const { resources, loading } = useResources();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-
-  const [selectedResource, setSelectedResource] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleBookClick = (resource) => {
-    setSelectedResource(resource);
-    setIsModalOpen(true);
-  };
+  const navigate = useNavigate();
 
   const activeResources = useMemo(
     () => resources.filter((item) => item.status === "ACTIVE"),
@@ -161,7 +154,20 @@ export default function AvailableResourcesPage() {
                 <button
                   className="resource-btn resource-btn--book"
                   type="button"
-                  onClick={() => handleBookClick(resource)}
+                  onClick={() =>
+                    navigate({
+                      pathname: "/bookings",
+                      search: `?${createSearchParams({
+                        resourceId: String(resource.id),
+                        resourceName: resource.name,
+                        resourceType: resource.type,
+                        location: resource.location,
+                        availFrom: resource.availFrom || "",
+                        availUntil: resource.availUntil || "",
+                        capacity: String(resource.capacity || ""),
+                      })}`,
+                    })
+                  }
                 >
                   <CalendarCheck2 size={16} />
                   <span>Book Now</span>
@@ -178,18 +184,6 @@ export default function AvailableResourcesPage() {
           </div>
         )}
       </div>
-
-      {selectedResource && (
-        <BookingModal
-          resource={selectedResource}
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSuccess={() => {
-            if (reloadResources) reloadResources();
-            // Optional: add a toast or global notification here
-          }}
-        />
-      )}
     </section>
   );
 }

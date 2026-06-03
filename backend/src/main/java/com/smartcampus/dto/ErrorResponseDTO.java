@@ -12,9 +12,11 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ErrorResponseDTO {
+    private boolean success;
     private LocalDateTime timestamp;
     private int status;
     private String error;
     private String message;
+    private Object data;
     private String path;
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Building2, ShieldCheck, Sparkles } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -12,12 +12,20 @@ const RoleLoginPage = ({
     loginRequest,
     onSuccess,
     footer,
+    googleClientId,
+    googleLoginRequest,
 }) => {
     const { login } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const googleButtonRef = useRef(null);
+    const onSuccessRef = useRef(onSuccess);
+
+    useEffect(() => {
+        onSuccessRef.current = onSuccess;
+    }, [onSuccess]);
 
     const validate = () => {
         const normalizedEmail = email.trim();
@@ -33,6 +41,77 @@ const RoleLoginPage = ({
         return "";
     };
 
+    useEffect(() => {
+        if (!googleClientId || !googleLoginRequest || typeof window === "undefined") {
+            return undefined;
+        }
+
+        let cancelled = false;
+
+        const initializeGoogleButton = () => {
+            if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) {
+                return;
+            }
+
+            googleButtonRef.current.innerHTML = "";
+            window.google.accounts.id.initialize({
+                client_id: googleClientId,
+                callback: async (response) => {
+                    if (!response?.credential) {
+                        setError("Google sign-in did not return a valid credential.");
+                        return;
+                    }
+
+                    setError("");
+                    setIsSubmitting(true);
+
+                    try {
+                        const authData = await googleLoginRequest(response.credential);
+                        login(authData);
+                        onSuccessRef.current?.(authData);
+                    } catch (err) {
+                        setError(err.response?.data?.message || "Google sign-in failed. Please try again.");
+                    } finally {
+                        setIsSubmitting(false);
+                    }
+                },
+            });
+
+            window.google.accounts.id.renderButton(googleButtonRef.current, {
+                theme: "outline",
+                size: "large",
+                shape: "pill",
+                text: "continue_with",
+                width: 360,
+                logo_alignment: "left",
+            });
+        };
+
+        const existingScript = document.getElementById("google-identity-script");
+        if (window.google?.accounts?.id) {
+            initializeGoogleButton();
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        const script = existingScript || document.createElement("script");
+        if (!existingScript) {
+            script.id = "google-identity-script";
+            script.src = "https://accounts.google.com/gsi/client";
+            script.async = true;
+            script.defer = true;
+            document.body.appendChild(script);
+        }
+
+        script.addEventListener("load", initializeGoogleButton);
+
+        return () => {
+            cancelled = true;
+            script.removeEventListener("load", initializeGoogleButton);
+        };
+    }, [googleClientId, googleLoginRequest, login]);
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setError("");
@@ -46,7 +125,7 @@ const RoleLoginPage = ({
         try {
             const authData = await loginRequest({ email: email.trim(), password });
             login(authData);
-            onSuccess(authData);
+            onSuccess?.(authData);
         } catch (err) {
             setError(err.response?.data?.message || "Login failed. Check your email and password.");
         } finally {
@@ -129,6 +208,27 @@ const RoleLoginPage = ({
                                 <ArrowRight size={17} />
                             </button>
                         </form>
+
+                        {googleClientId && googleLoginRequest && (
+                            <div className="mt-7">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-px flex-1 bg-gray-200" />
+                                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                                        or continue with Google
+                                    </span>
+                                    <div className="h-px flex-1 bg-gray-200" />
+                                </div>
+
+                                <div className="mt-4 flex justify-center">
+                                    <div ref={googleButtonRef} className="min-h-[48px]" />
+                                </div>
+
+                                <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs text-gray-500">
+                                    <Sparkles size={14} />
+                                    Use your verified Google account for the user portal.
+                                </p>
+                            </div>
+                        )}
 
                         {footer}
                     </div>
