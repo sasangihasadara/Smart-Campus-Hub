@@ -134,6 +134,7 @@ public class ResourceService {
         resource.setAvailFrom(request.getAvailFrom());
         resource.setAvailUntil(request.getAvailUntil());
         resource.setDescription(request.getDescription() == null ? "" : request.getDescription().trim());
+        resource.setSpecialFeatures(request.getSpecialFeatures() == null ? "" : request.getSpecialFeatures().trim());
         return resource;
     }
 
@@ -148,6 +149,7 @@ public class ResourceService {
                 .availFrom(resource.getAvailFrom())
                 .availUntil(resource.getAvailUntil())
                 .description(resource.getDescription())
+                .specialFeatures(resource.getSpecialFeatures())
                 .createdAt(resource.getCreatedAt())
                 .updatedAt(resource.getUpdatedAt())
                 .build();
@@ -156,10 +158,17 @@ public class ResourceService {
     private void validateBusinessRules(ResourceRequestDTO request) {
         validateAvailability(request.getAvailFrom(), request.getAvailUntil());
         validateTypeCapacity(request.getType(), request.getCapacity());
+        validateSpecialFeatures(request.getSpecialFeatures());
 
         if (request.getStatus() == ResourceStatus.OUT_OF_SERVICE
                 && (request.getDescription() == null || request.getDescription().trim().isEmpty())) {
             throw new IllegalArgumentException("Provide a short description when a resource is out of service");
+        }
+    }
+
+    private void validateSpecialFeatures(String specialFeatures) {
+        if (specialFeatures != null && specialFeatures.length() > 240) {
+            throw new IllegalArgumentException("Special features must not exceed 240 characters");
         }
     }
 
@@ -233,7 +242,8 @@ public class ResourceService {
                 predicate = criteriaBuilder.and(predicate, criteriaBuilder.or(
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), searchValue),
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("location")), searchValue),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), searchValue)));
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), searchValue),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("specialFeatures")), searchValue)));
             }
 
             if (type != null) {

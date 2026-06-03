@@ -66,6 +66,9 @@ public class Resource {
     @Column(length = 240)
     private String description;
 
+    @Column(length = 240)
+    private String specialFeatures;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

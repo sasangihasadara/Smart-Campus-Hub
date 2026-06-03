@@ -48,4 +48,7 @@ public class ResourceRequestDTO {
 
     @Size(max = 240, message = "Description must not exceed 240 characters")
     private String description;
+
+    @Size(max = 240, message = "Special features must not exceed 240 characters")
+    private String specialFeatures;
 }

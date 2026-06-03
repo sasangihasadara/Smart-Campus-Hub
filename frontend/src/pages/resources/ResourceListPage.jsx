@@ -158,6 +158,7 @@ export default function ResourceListPage() {
       availFrom: resource.availFrom || "08:00",
       availUntil: resource.availUntil || "18:00",
       description: resource.description || "",
+      specialFeatures: resource.specialFeatures || "",
     });
     setTouchedFields({});
     setSubmitAttempted(false);
@@ -191,6 +192,7 @@ export default function ResourceListPage() {
       availFrom: true,
       availUntil: true,
       description: true,
+      specialFeatures: true,
     });
 
     if (!formValidation.isValid) {
@@ -375,6 +377,12 @@ export default function ResourceListPage() {
                   <span>Availability:</span>
                   <strong>{formatAvailability(resource)}</strong>
                 </div>
+                {resource.specialFeatures ? (
+                  <div className="resource-card__row">
+                    <span>Special Features:</span>
+                    <strong>{resource.specialFeatures}</strong>
+                  </div>
+                ) : null}
                 <div className="resource-card__row">
                   <span>Status:</span>
                   <span className={`resource-status ${statusClass(resource.status)}`}>
@@ -585,6 +593,22 @@ export default function ResourceListPage() {
           </div>
 
           <label className="resource-form-group resource-form-group--full">
+            <span>Special Features</span>
+            <textarea
+              value={form.specialFeatures}
+              onChange={(event) => updateField("specialFeatures", event.target.value)}
+              onBlur={() => markTouched("specialFeatures")}
+              placeholder="Key features, equipment, or setup details..."
+              maxLength={RESOURCE_FORM_LIMITS.specialFeaturesMax}
+              aria-invalid={Boolean(getFieldError("specialFeatures"))}
+              className={getFieldError("specialFeatures") ? "is-invalid" : ""}
+            />
+            {getFieldError("specialFeatures") ? (
+              <div className="resource-form-feedback error">{getFieldError("specialFeatures")}</div>
+            ) : null}
+          </label>
+
+          <label className="resource-form-group resource-form-group--full">
             <span>Description / Notes</span>
             <textarea
               value={form.description}
@@ -649,6 +673,12 @@ export default function ResourceListPage() {
                 <span>Availability</span>
                 <strong>{formatAvailability(selectedResource)}</strong>
               </div>
+              {selectedResource.specialFeatures ? (
+                <div className="resource-detail__row resource-detail__row--stack">
+                  <span>Special Features</span>
+                  <strong>{selectedResource.specialFeatures}</strong>
+                </div>
+              ) : null}
               <div className="resource-detail__row resource-detail__row--stack">
                 <span>Description</span>
                 <strong>{selectedResource.description || "No description available."}</strong>

@@ -370,6 +370,11 @@ export default function TicketListPage({ forcedRole = null }) {
   const isAdmin = getViewerRole(viewer.role) === "ADMIN";
   const isTechnician = getViewerRole(viewer.role) === "TECHNICIAN";
 
+  const chosenResource = useMemo(
+    () => resources.find((resource) => String(resource.id) === String(createForm.resourceId)) || null,
+    [createForm.resourceId, resources],
+  );
+
   useEffect(() => {
     if (!forcedRole) return;
 
@@ -910,6 +915,29 @@ export default function TicketListPage({ forcedRole = null }) {
                 </button>
               }
             />
+
+            <div className="ticket-panel__intro">
+              <span className="ticket-panel__pill">Enhanced Ticket Builder</span>
+              <p className="ticket-panel__subcopy">
+                Report issues faster with guided fields, resource-aware location auto-fill, and optional image proof.
+              </p>
+            </div>
+
+            {chosenResource ? (
+              <div className="ticket-card ticket-card--summary">
+                <div className="ticket-card__heading">Selected Resource</div>
+                <div className="ticket-card__grid">
+                  <div><strong>{chosenResource.name}</strong></div>
+                  <div>{chosenResource.location}</div>
+                  <div>{prettyLabel(chosenResource.type)}</div>
+                  <div>{prettyLabel(chosenResource.status)}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="ticket-panel__hint">
+                <strong>Tip:</strong> Select a resource to prefill location. If no resource is available, just type the room or area.
+              </div>
+            )}
 
             <div className="ticket-form-grid">
               <label className="ticket-field">

@@ -20,6 +20,7 @@ export const EMPTY_RESOURCE_FORM = {
   availFrom: "08:00",
   availUntil: "18:00",
   description: "",
+  specialFeatures: "",
 };
 
 export const RESOURCE_FORM_LIMITS = {
@@ -28,6 +29,7 @@ export const RESOURCE_FORM_LIMITS = {
   locationMin: 3,
   locationMax: 80,
   descriptionMax: 240,
+  specialFeaturesMax: 240,
   minAvailabilityMinutes: 30,
 };
 
@@ -54,6 +56,7 @@ export function normalizeResource(resource = {}) {
     availFrom: resource.availFrom ?? "08:00",
     availUntil: resource.availUntil ?? "18:00",
     description: resource.description ?? "",
+    specialFeatures: resource.specialFeatures ?? "",
   };
 }
 
@@ -69,6 +72,7 @@ export function sanitizeResourceForm(form = EMPTY_RESOURCE_FORM) {
     availFrom: String(form.availFrom ?? "08:00").trim() || "08:00",
     availUntil: String(form.availUntil ?? "18:00").trim() || "18:00",
     description: String(form.description ?? "").replace(/\s+/g, " ").trim(),
+    specialFeatures: String(form.specialFeatures ?? "").replace(/\s+/g, " ").trim(),
   };
 }
 
@@ -184,6 +188,10 @@ export function validateResourceForm(form, resources = [], editingId = null) {
     errors.description = `Description must stay under ${RESOURCE_FORM_LIMITS.descriptionMax} characters.`;
   }
 
+  if (normalized.specialFeatures.length > RESOURCE_FORM_LIMITS.specialFeaturesMax) {
+    errors.specialFeatures = `Special features must stay under ${RESOURCE_FORM_LIMITS.specialFeaturesMax} characters.`;
+  }
+
   const duplicateResource = resources.find(
     (resource) =>
       resource.name.trim().toLowerCase() === normalized.name.toLowerCase() &&
@@ -267,7 +275,8 @@ export function filterResources(resources, filters = {}) {
     const matchesSearch =
       !search ||
       resource.name.toLowerCase().includes(search) ||
-      resource.location.toLowerCase().includes(search);
+      resource.location.toLowerCase().includes(search) ||
+      (resource.specialFeatures ?? "").toLowerCase().includes(search);
 
     const matchesType = !type || resource.type === type;
     const matchesStatus = !status || resource.status === status;
@@ -287,7 +296,7 @@ export function formatAvailability(resource) {
 
 export function buildCsv(resources) {
   const rows = [
-    ["Name", "Type", "Capacity", "Location", "Status", "Available From", "Available Until"],
+    ["Name", "Type", "Capacity", "Location", "Status", "Available From", "Available Until", "Special Features"],
     ...resources.map((resource) => [
       resource.name,
       typeLabel(resource.type),
@@ -296,6 +305,7 @@ export function buildCsv(resources) {
       statusLabel(resource.status),
       resource.availFrom,
       resource.availUntil,
+      resource.specialFeatures,
     ]),
   ];
 
