@@ -45,6 +45,7 @@ const TechnicianDashboardPage = () => {
                         <RoleLink to="/technician/resources" label="Resource list" />
                         <RoleLink to="/technician/available" label="Available resources" />
                         <RoleLink to="/technician/reports" label="Resource reports" />
+                        <RoleLink to="/technician-tickets" label="Ticket workspace" />
                         <RoleLink to="/profile" label="My profile" />
                     </div>
                 </div>

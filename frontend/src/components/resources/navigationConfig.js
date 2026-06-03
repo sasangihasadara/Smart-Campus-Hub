@@ -21,7 +21,10 @@ const ROLE_SECTIONS = {
     },
     {
       label: "Administration",
-      items: [{ label: "Booking Management", path: "/admin/bookings", key: "admin", tone: "admin" }],
+      items: [
+        { label: "Booking Management", path: "/admin/bookings", key: "admin", tone: "admin" },
+        { label: "Tickets", path: "/admin-tickets", key: "tickets", tone: "tickets" },
+      ],
     },
   ],
   TECHNICIAN: [
@@ -32,6 +35,7 @@ const ROLE_SECTIONS = {
         { label: "Resources", path: "resources", key: "resources", tone: "resources" },
         { label: "Available", path: "available", key: "available", tone: "available" },
         { label: "Reports", path: "reports", key: "reports", tone: "reports" },
+        { label: "Tickets", path: "/technician-tickets", key: "tickets", tone: "tickets" },
       ],
     },
   ],
@@ -106,4 +110,3 @@ export const getRoleSearchItems = (role, pathname = "") => {
 };
 
 export const isUserRole = (role) => USER_ROLES.includes(role);
-

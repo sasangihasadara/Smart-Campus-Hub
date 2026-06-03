@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   LayoutDashboard,
   LogOut,
+  MessageSquareText,
   School,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -18,6 +19,7 @@ const iconByKey = {
   available: CalendarCheck2,
   reports: BarChart3,
   admin: ClipboardCheck,
+  tickets: MessageSquareText,
 };
 
 export default function Sidebar() {

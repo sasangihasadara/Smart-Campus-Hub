@@ -45,6 +45,7 @@ const AdminDashboardPage = () => {
                         <RoleLink to="/admin/resources" label="Resource management" />
                         <RoleLink to="/admin/available" label="Available resources" />
                         <RoleLink to="/admin/bookings" label="Booking management" />
+                        <RoleLink to="/admin-tickets" label="Ticket management" />
                         <RoleLink to="/admin/reports" label="Resource reports" />
                         <RoleLink to="/profile" label="My profile" />
                     </div>

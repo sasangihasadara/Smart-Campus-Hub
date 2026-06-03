@@ -185,6 +185,12 @@
   border-color: rgba(37, 99, 235, 0.16);
 }
 
+.resource-nav-item__icon--tickets {
+  color: #be185d;
+  background: #fdf2f8;
+  border-color: rgba(236, 72, 153, 0.16);
+}
+
 .resource-nav-item:hover,
 .resource-nav-item.active {
   background: linear-gradient(135deg, rgba(219, 234, 254, 0.96), rgba(191, 219, 254, 0.95));
