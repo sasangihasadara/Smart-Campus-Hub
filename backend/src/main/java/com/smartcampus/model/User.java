@@ -39,6 +39,6 @@ public class User {
     private String semester;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private UserRole role;
 }
