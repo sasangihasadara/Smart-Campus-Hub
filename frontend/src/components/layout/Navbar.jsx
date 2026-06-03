@@ -41,12 +41,13 @@ const Navbar = () => {
         : user
           ? "/user/resources"
           : "/resources";
+  const canSeeReports = !user || ["ADMIN", "TECHNICIAN", "FACULTY", "STAFF"].includes(user?.role);
 
   const navItems = [
     { label: "Resources", path: resourcesPath, icon: <HardDrive size={18} /> },
     { label: "Bookings", path: "/bookings", icon: <Calendar size={18} /> },
     { label: "Tickets", path: "/tickets", icon: <Ticket size={18} /> },
-    { label: "Reports", path: "/reports", icon: <FileBarChart size={18} /> },
+    ...(canSeeReports ? [{ label: "Reports", path: "/reports", icon: <FileBarChart size={18} /> }] : []),
   ];
 
   const closeMobile = () => setMobileMenuOpen(false);
