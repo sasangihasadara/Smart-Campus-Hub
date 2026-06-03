@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
     Search, 
     Filter, 
@@ -40,7 +40,7 @@ export default function AdminBookings() {
     
     const { addToast } = useToast();
 
-    const fetchAllData = async () => {
+    const fetchAllData = useCallback(async () => {
         setLoading(true);
         try {
             const data = await getAllBookings();
@@ -50,11 +50,11 @@ export default function AdminBookings() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [addToast]);
 
     useEffect(() => {
-        fetchAllData();
-    }, []);
+        void fetchAllData();
+    }, [fetchAllData]);
 
     const filteredBookings = useMemo(() => {
         return bookings.filter(b => {

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Bell, Calendar, FileBarChart, HardDrive, LayoutDashboard, Menu, Ticket, User, X } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 const NavLink = ({ to, label, isActive }) => (
@@ -22,6 +22,7 @@ const NavLink = ({ to, label, isActive }) => (
 const Navbar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -124,12 +125,15 @@ const Navbar = () => {
                       <User size={18} />
                     )}
                   </Link>
-                  <button
-                    type="button"
-                    onClick={logout}
-                    className="text-sm font-semibold text-gray-600 transition-colors hover:text-blue-600"
-                  >
-                    Logout
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    navigate("/");
+                  }}
+                  className="text-sm font-semibold text-gray-600 transition-colors hover:text-blue-600"
+                >
+                  Logout
                   </button>
                 </div>
               ) : (
@@ -191,6 +195,7 @@ const Navbar = () => {
                   onClick={() => {
                     logout();
                     closeMobile();
+                    navigate("/");
                   }}
                   className="flex items-center px-4 py-3 rounded-xl text-base font-semibold text-gray-700 hover:bg-gray-50"
                 >

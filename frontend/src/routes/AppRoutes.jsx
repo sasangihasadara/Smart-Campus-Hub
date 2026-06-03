@@ -26,6 +26,8 @@ import UserDashboardPage from "../pages/user/UserDashboardPage";
 
 const USER_ROLES = ["STUDENT", "FACULTY", "STAFF"];
 const ALL_ROLES = ["ADMIN", "TECHNICIAN", ...USER_ROLES];
+const ADMIN_ROLES = ["ADMIN"];
+const TECHNICIAN_ROLES = ["TECHNICIAN"];
 
 function AppRoutes() {
   return (
@@ -193,10 +195,38 @@ function AppRoutes() {
         <Route path="/resource-reports" element={<Reports />} />
       </Route>
 
-      <Route path="/bookings" element={<BookingListPage />} />
-      <Route path="/tickets" element={<TicketListPage />} />
-      <Route path="/technician-tickets" element={<TechnicianTicketPage />} />
-      <Route path="/admin-tickets" element={<AdminTicketPage />} />
+      <Route
+        path="/bookings"
+        element={(
+          <ProtectedRoute allowedRoles={ALL_ROLES}>
+            <BookingListPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/tickets"
+        element={(
+          <ProtectedRoute allowedRoles={ALL_ROLES}>
+            <TicketListPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/technician-tickets"
+        element={(
+          <ProtectedRoute allowedRoles={TECHNICIAN_ROLES} fallback="/technician-login">
+            <TechnicianTicketPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/admin-tickets"
+        element={(
+          <ProtectedRoute allowedRoles={ADMIN_ROLES} fallback="/admin-login">
+            <AdminTicketPage />
+          </ProtectedRoute>
+        )}
+      />
       <Route path="/reports" element={<PublicReportsPage />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />

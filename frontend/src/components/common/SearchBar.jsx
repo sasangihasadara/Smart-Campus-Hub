@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { Search } from 'lucide-react'
-import { useNavigate, useLocation } from 'react-router-dom'
 
 const SearchBar = () => {
   const [input, setInput] = useState('');

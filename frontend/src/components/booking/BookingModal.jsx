@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Users, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { createBooking } from '../../services/bookingService';
-import { typeLabel, typeClass } from '../../utils/resourceModule';
+import { typeLabel } from '../../utils/resourceModule';
 
 export default function BookingModal({ resource, isOpen, onClose, onSuccess }) {
     const [formData, setFormData] = useState({

@@ -31,11 +31,17 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final String googleClientId;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public UserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-id:}") String googleClientId) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.googleClientId = googleClientId;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -198,6 +204,16 @@ public class UserService {
             }
 
             Map<String, Object> payload = OBJECT_MAPPER.readValue(response.body(), Map.class);
+            String issuer = stringValue(payload.get("iss"));
+            if (!"accounts.google.com".equals(issuer) && !"https://accounts.google.com".equals(issuer)) {
+                throw new IllegalArgumentException("Google sign-in token issuer is invalid");
+            }
+
+            String audience = stringValue(payload.get("aud"));
+            if (googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals(audience)) {
+                throw new IllegalArgumentException("Google sign-in token was issued for a different client");
+            }
+
             Object verifiedValue = payload.get("email_verified");
             boolean emailVerified = verifiedValue instanceof Boolean bool
                     ? bool

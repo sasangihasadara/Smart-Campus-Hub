@@ -54,15 +54,19 @@ const AdminDashboardPage = () => {
     );
 };
 
-const AccountItem = ({ icon: Icon, label, value, wide = false }) => (
-    <div className={`rounded-lg border border-slate-100 bg-slate-50 p-4 ${wide ? "md:col-span-2" : ""}`}>
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-            <Icon size={14} />
-            {label}
+const AccountItem = ({ icon, label, value, wide = false }) => {
+    const Icon = icon;
+
+    return (
+        <div className={`rounded-lg border border-slate-100 bg-slate-50 p-4 ${wide ? "md:col-span-2" : ""}`}>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                <Icon size={14} />
+                {label}
+            </div>
+            <div className="mt-2 break-words text-sm font-semibold text-slate-900">{value}</div>
         </div>
-        <div className="mt-2 break-words text-sm font-semibold text-slate-900">{value}</div>
-    </div>
-);
+    );
+};
 
 const RoleLink = ({ to, label }) => (
     <Link to={to} className="block rounded-lg border border-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">

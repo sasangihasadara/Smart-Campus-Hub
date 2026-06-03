@@ -55,7 +55,7 @@ const HomePage = () => {
                             </div>
                         ))}
                     </div>
-                    <Link to="/user/resources" className="inline-block px-10 py-4 border border-gray-300 rounded-2xl font-bold text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
+                    <Link to="/resources" className="inline-block px-10 py-4 border border-gray-300 rounded-2xl font-bold text-gray-600 hover:bg-gray-50 transition-all shadow-sm">
                         View all resources
                     </Link>
                 </div>
@@ -167,4 +167,3 @@ const HomePage = () => {
 };
 
 export default HomePage;
-

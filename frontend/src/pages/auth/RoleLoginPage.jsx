@@ -230,6 +230,12 @@ const RoleLoginPage = ({
                             </div>
                         )}
 
+                        {googleLoginRequest && !googleClientId && (
+                            <div className="mt-7 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                Google sign-in is not configured yet. Add <span className="font-semibold">VITE_GOOGLE_CLIENT_ID</span> to enable it.
+                            </div>
+                        )}
+
                         {footer}
                     </div>
                 </div>

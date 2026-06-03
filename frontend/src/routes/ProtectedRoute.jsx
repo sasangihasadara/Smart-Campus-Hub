@@ -1,12 +1,12 @@
+import { useMemo, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../components/common/Toast";
-import { useEffect } from "react";
 
 export const ProtectedRoute = ({ children, role, allowedRoles, fallback = "/login" }) => {
     const { user, loading } = useAuth();
     const { addToast } = useToast();
-    const roles = allowedRoles || (role ? [role] : null);
+    const roles = useMemo(() => allowedRoles || (role ? [role] : null), [allowedRoles, role]);
 
     useEffect(() => {
         if (user && roles && !roles.includes(user.role)) {
@@ -23,7 +23,7 @@ export const ProtectedRoute = ({ children, role, allowedRoles, fallback = "/logi
     }
 
     if (roles && !roles.includes(user.role)) {
-        return <Navigate to="/" replace />;
+        return <Navigate to={fallback} replace />;
     }
 
     return children;

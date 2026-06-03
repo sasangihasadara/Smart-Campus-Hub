@@ -62,7 +62,7 @@ This project uses template files for configuration to keep secrets out of versio
 
 4. The API will be available at:
 ```
-   http://localhost:8080/api/v1
+   http://localhost:8081/api
 ```
 
 ---
@@ -81,7 +81,7 @@ This project uses template files for configuration to keep secrets out of versio
 
 3. Create a `.env` file in the frontend root:
 ```env
-   VITE_API_BASE_URL=http://localhost:8080/api/v1
+   VITE_API_BASE_URL=/api
 ```
 
 4. Start the development server:
@@ -103,9 +103,12 @@ This project uses template files for configuration to keep secrets out of versio
 3. Go to **Credentials** → Create **OAuth 2.0 Client ID**
 4. Set the authorized redirect URI:
 ```
-   http://localhost:8080/login/oauth2/code/google
+   http://localhost:8081/login/oauth2/code/google
 ```
 5. Copy the **Client ID** and **Client Secret** into `application.properties`
+
+> Note: this project uses Google Identity Services on the frontend, so the important value is the Web client ID. Use the same client ID in `frontend/.env` as `VITE_GOOGLE_CLIENT_ID` and in `backend/src/main/resources/application.properties` as `spring.security.oauth2.client.registration.google.client-id`. The backend checks the token directly and does not use the client secret in the current flow.
+> Ignore the old redirect-URI instruction above for this project. The Google button flow here uses a JavaScript origin, not the classic server redirect flow.
 
 ---
 
@@ -173,13 +176,13 @@ See `.github/workflows/ci.yml` for full configuration.
 
 | Method | Endpoint | Description | Member |
 |--------|----------|-------------|--------|
-| GET | `/api/v1/resources` | List all resources | Member 1 |
-| POST | `/api/v1/resources` | Add a new resource | Member 1 |
-| GET | `/api/v1/bookings/{id}` | Get booking by ID | Member 2 |
-| POST | `/api/v1/bookings` | Create a booking | Member 2 |
-| GET | `/api/v1/tickets` | List all tickets | Member 3 |
-| POST | `/api/v1/tickets` | Create incident ticket | Member 3 |
-| GET | `/api/v1/notifications` | Get user notifications | Member 4 |
+| GET | `/api/resources` | List all resources | Member 1 |
+| POST | `/api/resources` | Add a new resource | Member 1 |
+| GET | `/api/bookings/{id}` | Get booking by ID | Member 2 |
+| POST | `/api/bookings` | Create a booking | Member 2 |
+| GET | `/api/tickets` | List all tickets | Member 3 |
+| POST | `/api/tickets` | Create incident ticket | Member 3 |
+| GET | `/api/notifications` | Get user notifications | Member 4 |
 
 > Full endpoint list is available in the Final Report.
 

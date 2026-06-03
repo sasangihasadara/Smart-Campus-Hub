@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from "react";
 import { getCurrentUser } from "../services/authService";
 
@@ -8,16 +9,42 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            setLoading(false);
-            return;
-        }
+        let active = true;
 
-        getCurrentUser()
-            .then(setUser)
-            .catch(() => localStorage.removeItem("token"))
-            .finally(() => setLoading(false));
+        const bootstrapAuth = async () => {
+            const token = localStorage.getItem("token");
+
+            if (!token) {
+                window.setTimeout(() => {
+                    if (active) {
+                        setLoading(false);
+                    }
+                }, 0);
+                return;
+            }
+
+            try {
+                const currentUser = await getCurrentUser();
+                if (active) {
+                    setUser(currentUser);
+                }
+            } catch {
+                localStorage.removeItem("token");
+                if (active) {
+                    setUser(null);
+                }
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        void bootstrapAuth();
+
+        return () => {
+            active = false;
+        };
     }, []);
 
     const login = ({ token, user: userData }) => {

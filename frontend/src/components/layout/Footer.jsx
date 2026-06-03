@@ -41,7 +41,7 @@ const Footer = () => {
                 </div>
                 
                 <div className="flex flex-col md:flex-row justify-between items-center pt-10 text-gray-500 text-sm font-medium">
-                    <p>Copyright 2026 © Smart Campus Operations Hub. All Right Reserved.</p>
+                    <p>Copyright 2026 © Smart Campus Operations Hub. All rights reserved.</p>
                     <div className="flex gap-8 mt-4 md:mt-0">
                         <a href="#" className="hover:text-white transition-colors">Terms</a>
                         <a href="#" className="hover:text-white transition-colors">Privacy</a>

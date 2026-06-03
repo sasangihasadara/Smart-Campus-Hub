@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   createResource,
@@ -30,7 +31,7 @@ export function ResourceProvider({ children }) {
       setApiMode("live");
       setError("");
       nextMockIdRef.current = getNextResourceId(liveResources);
-    } catch (loadError) {
+    } catch {
       const fallbackResources = sortResources(MOCK_RESOURCES.map(normalizeResource));
       setResources(fallbackResources);
       setApiMode("mock");

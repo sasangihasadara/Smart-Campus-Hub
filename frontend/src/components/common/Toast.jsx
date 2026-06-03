@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
@@ -6,15 +7,15 @@ const ToastContext = createContext(null);
 export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = useState([]);
 
-    const addToast = useCallback((message, type = 'success') => {
-        const id = Date.now();
-        setToasts(prev => [...prev, { id, message, type }]);
-        setTimeout(() => removeToast(id), 4000);
-    }, []);
-
     const removeToast = useCallback((id) => {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
+
+    const addToast = useCallback((message, type = 'success') => {
+        const id = Date.now();
+        setToasts((prev) => [...prev, { id, message, type }]);
+        window.setTimeout(() => removeToast(id), 4000);
+    }, [removeToast]);
 
     return (
         <ToastContext.Provider value={{ addToast }}>

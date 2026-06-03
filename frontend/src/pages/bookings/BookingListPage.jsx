@@ -30,31 +30,35 @@ export default function BookingListPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!selectedResource?.id || selectedResource.id === "N/A") {
-      setResourceBookings([]);
-      return;
-    }
-
     let active = true;
-    setLoading(true);
-    setError("");
+    const loadBookings = async () => {
+      if (!selectedResource?.id || selectedResource.id === "N/A") {
+        setResourceBookings([]);
+        setLoading(false);
+        setError("");
+        return;
+      }
 
-    getBookingsByResource(selectedResource.id)
-      .then((data) => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const data = await getBookingsByResource(selectedResource.id);
         if (active) {
           setResourceBookings(data || []);
         }
-      })
-      .catch((fetchError) => {
+      } catch (fetchError) {
         if (active) {
           setError(fetchError.message || "Failed to load resource bookings");
         }
-      })
-      .finally(() => {
+      } finally {
         if (active) {
           setLoading(false);
         }
-      });
+      }
+    };
+
+    void loadBookings();
 
     return () => {
       active = false;

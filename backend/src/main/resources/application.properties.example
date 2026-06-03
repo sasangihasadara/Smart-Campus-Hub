@@ -21,14 +21,12 @@ spring.jpa.properties.hibernate.dialect=${SPRING_JPA_DIALECT:org.hibernate.diale
 spring.h2.console.enabled=true
 spring.h2.console.path=/h2-console
 
-# OAuth2 Google Login
-# Obtain these from Google Cloud Console (https://console.cloud.google.com/)
+# Google Sign-In verification
+# Use the same Google OAuth client ID here and in the frontend VITE_GOOGLE_CLIENT_ID.
+# The current app uses Google Identity Services on the client and verifies the ID token on the backend.
 spring.security.oauth2.client.registration.google.client-id=YOUR_GOOGLE_CLIENT_ID
 spring.security.oauth2.client.registration.google.client-secret=YOUR_GOOGLE_CLIENT_SECRET
 spring.security.oauth2.client.registration.google.scope=email,profile
-
-# The frontend exchanges the Google ID token for a local JWT using /api/auth/google
-# Google sign-in is intended for user portal accounts.
 
 # Ticket attachment storage
 app.upload.ticket-images-dir=backend/uploads/tickets

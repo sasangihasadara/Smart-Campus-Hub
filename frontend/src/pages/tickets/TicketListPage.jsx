@@ -190,19 +190,6 @@ function getSlaTone(priority) {
   }
 }
 
-function formatDuration(value, now = Date.now()) {
-  if (!value) return "0m";
-  const diffMs = Math.max(now - new Date(value).getTime(), 0);
-  const totalMinutes = Math.floor(diffMs / 60000);
-  const days = Math.floor(totalMinutes / 1440);
-  const hours = Math.floor((totalMinutes % 1440) / 60);
-  const minutes = totalMinutes % 60;
-
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
-}
-
 function StatCard({ icon, label, value, accent }) {
   return (
     <div className={`ticket-stat-card ticket-stat-card--${accent}`}>
@@ -231,12 +218,6 @@ function PanelTitle({ icon, eyebrow, title, action }) {
 }
 
 function SlaMetricCard({ label, priority, createdAt, updatedAt, status, comments, type }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 60000);
-    return () => window.clearInterval(timer);
-  }, []);
-
   const sla = getSlaStatus(priority, createdAt, updatedAt, status, comments);
   const metric = sla[type];
   const isOverdue = metric.remaining < 0 && metric.met === null;
@@ -278,13 +259,6 @@ function SlaMetricCard({ label, priority, createdAt, updatedAt, status, comments
 }
 
 function SlaBadge({ priority, createdAt, updatedAt, status, comments }) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 60000);
-    return () => window.clearInterval(timer);
-  }, []);
-
   const sla = getSlaStatus(priority, createdAt, updatedAt, status, comments);
   const tone = getSlaTone(priority);
 

@@ -107,7 +107,8 @@ const ProfilePage = () => {
         setIsSaving(true);
 
         try {
-            const { confirmPassword, ...payload } = formData;
+            const payload = { ...formData };
+            delete payload.confirmPassword;
             const authData = await updateCurrentUser({
                 ...payload,
                 email: payload.email.trim(),

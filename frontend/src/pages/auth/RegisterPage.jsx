@@ -74,7 +74,8 @@ const RegisterPage = () => {
         setIsSubmitting(true);
 
         try {
-            const { confirmPassword, ...payload } = formData;
+            const payload = { ...formData };
+            delete payload.confirmPassword;
             const authData = await registerUser({
                 ...payload,
                 email: payload.email.trim(),
@@ -108,12 +109,16 @@ const RegisterPage = () => {
                             { icon: Phone, text: "Contact details" },
                             { icon: MapPin, text: "Address and campus identity" },
                             { icon: GraduationCap, text: "Faculty, year, and semester" },
-                        ].map(({ icon: Icon, text }) => (
-                            <div key={text} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/10 p-4 text-sm text-slate-200">
-                                <Icon size={18} className="text-sky-300" />
-                                {text}
-                            </div>
-                        ))}
+                        ].map(({ icon, text }) => {
+                            const Icon = icon;
+
+                            return (
+                                <div key={text} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/10 p-4 text-sm text-slate-200">
+                                    <Icon size={18} className="text-sky-300" />
+                                    {text}
+                                </div>
+                            );
+                        })}
                     </div>
                 </aside>
 
