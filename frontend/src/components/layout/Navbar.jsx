@@ -85,7 +85,7 @@ const Navbar = () => {
   const closeMobile = () => setMobileMenuOpen(false);
 
   return (
-    <nav className="sticky top-0 z-50 w-full font-sans backdrop-blur-md bg-white/75 border-b border-gray-200/50 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300">
+    <nav className="sticky top-0 z-50 w-full font-sans backdrop-blur-xl bg-white/80 border-b border-slate-200/70 shadow-[0_8px_30px_-18px_rgba(15,23,42,0.45)] transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center">

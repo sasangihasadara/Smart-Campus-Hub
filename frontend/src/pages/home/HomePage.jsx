@@ -11,7 +11,7 @@ import Footer from '../../components/layout/Footer';
 
 const HomePage = () => {
     return (
-        <div className="min-h-screen bg-white selection:bg-blue-100 selection:text-blue-700 font-sans">
+        <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(219,234,254,0.55),_transparent_30%),linear-gradient(180deg,_#fbfdff_0%,_#eef6ff_100%)] selection:bg-blue-100 selection:text-blue-700 font-sans">
             <Navbar />
             
             <Hero />
@@ -21,7 +21,7 @@ const HomePage = () => {
             <FeaturesSection />
 
             {/* Catalogue Preview (Available Facilities & Assets) */}
-            <section className="py-28 bg-white px-4 md:px-14">
+            <section className="py-28 bg-white/70 px-4 md:px-14">
                 <div className="max-w-7xl mx-auto">
                     <div className="mb-16">
                         <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-5 tracking-tight font-heading">Available Facilities & Assets</h2>
@@ -64,7 +64,7 @@ const HomePage = () => {
                 </div>
             </section>
 
-            <section className="py-28 bg-slate-50 px-4 md:px-14">
+            <section className="py-28 bg-slate-50/80 px-4 md:px-14">
                 <div className="max-w-7xl mx-auto">
                     <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between mb-14">
                         <div>

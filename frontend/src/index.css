@@ -54,7 +54,11 @@
 
 @layer base {
   body {
-    @apply font-sans bg-gray-50 text-gray-800 transition-colors duration-300;
+    @apply font-sans text-gray-800 transition-colors duration-300;
+    background:
+      radial-gradient(circle at top left, rgba(191, 219, 254, 0.55), transparent 28%),
+      radial-gradient(circle at top right, rgba(186, 230, 253, 0.35), transparent 24%),
+      linear-gradient(180deg, #f8fbff 0%, #f3f8fd 100%);
     min-height: 100vh;
   }
 }
@@ -73,4 +77,3 @@
     @apply bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-sm;
   }
 }
-
