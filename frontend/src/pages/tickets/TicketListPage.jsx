@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   AlertTriangle,
@@ -8,6 +7,8 @@ import {
   Clock3,
   Filter,
   LifeBuoy,
+  Mail,
+  MapPin,
   MessageSquareText,
   Paperclip,
   PlusCircle,
@@ -37,7 +38,7 @@ import {
 import { formatSlaRemaining, getSlaStatus } from "../../utils/SlaHelper";
 import "../../styles/tickets-page.css";
 
-const categoryOptions = [
+const ticketCategories = [
   "HARDWARE",
   "SOFTWARE",
   "NETWORK",
@@ -47,28 +48,16 @@ const categoryOptions = [
   "SECURITY",
   "OTHER",
 ];
-const priorityOptions = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
-const statusOptions = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED"];
-const roleOptions = ["USER", "TECHNICIAN", "ADMIN"];
 
-const emptyCreateForm = {
-  resourceId: "",
-  location: "",
-  category: "HARDWARE",
-  description: "",
-  priority: "MEDIUM",
-  preferredContactName: "",
-  preferredContactEmail: "",
-  preferredContactPhone: "",
-  reporterName: "",
-  reporterEmail: "",
-};
+const ticketPriorities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+const ticketStatuses = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED"];
+const reporterRoles = new Set(["STUDENT", "FACULTY"]);
+const staffRoles = new Set(["ADMIN", "TECHNICIAN", "STAFF"]);
 
-const emptyViewer = {
-  id: "USR-001",
-  name: "Campus User",
-  email: "user@smartcampus.local",
-  role: "USER",
+const emptyStatusUpdate = {
+  status: "",
+  rejectionReason: "",
+  resolutionNotes: "",
 };
 
 const emptyAssignment = {
@@ -77,43 +66,157 @@ const emptyAssignment = {
   assignedToEmail: "",
 };
 
-const rolePageConfig = {
-  USER: {
-    description:
-      "Create and track campus incidents with image evidence, threaded comments, and clear workflow updates.",
-    eyebrow: "Operations Desk",
-    pageTitle: "Incident Tickets",
-    queueHint: "Your reported incidents",
-    showCreatePanel: true,
-    showRoleSwitcher: true,
-  },
-  TECHNICIAN: {
-    description:
-      "Work assigned issues, capture diagnostics, upload proof, and move tickets through the repair workflow.",
-    eyebrow: "Technician Console",
-    pageTitle: "Technician Tickets",
-    queueHint: "Your assigned queue",
-    showCreatePanel: false,
-    showRoleSwitcher: true,
-  },
-  ADMIN: {
-    description:
-      "Oversee the full incident queue, assign technicians, handle rejections, and keep campus support operations moving.",
-    eyebrow: "Admin Control",
-    pageTitle: "Admin Tickets",
-    queueHint: "Campus-wide queue",
-    showCreatePanel: false,
-    showRoleSwitcher: true,
-  },
-};
+const emptyReportForm = (user) => ({
+  resourceId: "",
+  location: "",
+  category: "HARDWARE",
+  description: "",
+  priority: "MEDIUM",
+  preferredContactName: user?.name || "",
+  preferredContactEmail: user?.email || "",
+  preferredContactPhone: "",
+  reporterName: user?.name || "",
+  reporterEmail: user?.email || "",
+});
+
+function normalizeRole(role) {
+  const value = String(role || "").trim().toUpperCase();
+  return value || "STUDENT";
+}
+
+function canManageTickets(role) {
+  return staffRoles.has(normalizeRole(role));
+}
+
+function canAssignTickets(role) {
+  return normalizeRole(role) === "ADMIN";
+}
+
+function canDeleteTickets(role) {
+  return normalizeRole(role) === "ADMIN";
+}
+
+function isReporterRole(role) {
+  return reporterRoles.has(normalizeRole(role));
+}
+
+function roleTitle(role) {
+  switch (normalizeRole(role)) {
+    case "ADMIN":
+      return "Administrator";
+    case "TECHNICIAN":
+      return "Technician";
+    case "STAFF":
+      return "Campus Support Staff";
+    case "FACULTY":
+      return "Faculty Reporter";
+    default:
+      return "Student Reporter";
+  }
+}
+
+function queueScope(role) {
+  switch (normalizeRole(role)) {
+    case "ADMIN":
+      return "Campus-wide queue";
+    case "TECHNICIAN":
+    case "STAFF":
+      return "Assigned operations queue";
+    default:
+      return "Your submitted tickets";
+  }
+}
+
+function heroCopy(role) {
+  switch (normalizeRole(role)) {
+    case "ADMIN":
+      return "Triage escalations, assign the right technician, and keep the campus support desk moving with clear status updates and an audit trail.";
+    case "TECHNICIAN":
+      return "Work the assigned incident queue, capture progress notes, and close each job with evidence and a clean handover.";
+    case "STAFF":
+      return "Coordinate the operational queue, update progress, and maintain a clear record for campus support activity.";
+    case "FACULTY":
+      return "Report classroom or office issues quickly, keep the contact details accurate, and follow the repair thread from one place.";
+    default:
+      return "Report room, network, electrical, or equipment issues with photos, then follow the repair process in one campus workspace.";
+  }
+}
+
+function roleGuide(role) {
+  if (canManageTickets(role)) {
+    return [
+      "Prioritize OPEN and IN_PROGRESS incidents first.",
+      "Use assignment and status changes to show who owns the work.",
+      "Add clear resolution notes so the reporter can see what changed.",
+    ];
+  }
+
+  return [
+    "Pick the room, lab, or equipment involved.",
+    "Attach a photo if the issue is visible or physical.",
+    "Keep the contact details accurate so the help desk can reach you.",
+  ];
+}
+
+function buildFilterParams(filters, role, email) {
+  const params = {};
+  const normalizedRole = normalizeRole(role);
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+
+  if (filters.search.trim()) params.search = filters.search.trim();
+  if (filters.status) params.status = filters.status;
+  if (filters.priority) params.priority = filters.priority;
+  if (filters.category) params.category = filters.category;
+
+  if (normalizedRole === "ADMIN") {
+    return params;
+  }
+
+  if (normalizedRole === "TECHNICIAN" || normalizedRole === "STAFF") {
+    if (normalizedEmail) params.assignedToEmail = normalizedEmail;
+    return params;
+  }
+
+  if (normalizedEmail) params.reporterEmail = normalizedEmail;
+  return params;
+}
+
+function getNextStatuses(status, role) {
+  const currentRole = normalizeRole(role);
+  const canClose = currentRole === "ADMIN";
+  const canProgress = currentRole === "ADMIN" || currentRole === "TECHNICIAN" || currentRole === "STAFF";
+
+  if (status === "OPEN") {
+    if (currentRole === "ADMIN") return ["IN_PROGRESS", "REJECTED"];
+    if (canProgress) return ["IN_PROGRESS"];
+  }
+
+  if (status === "IN_PROGRESS") {
+    if (currentRole === "ADMIN") return ["RESOLVED", "REJECTED"];
+    if (canProgress) return ["RESOLVED"];
+  }
+
+  if (status === "RESOLVED" && canClose) {
+    return ["CLOSED"];
+  }
+
+  return [];
+}
 
 function prettyLabel(value) {
-  return value?.replaceAll("_", " ") ?? "";
+  return String(value || "").replaceAll("_", " ");
 }
 
 function formatDate(value) {
   if (!value) return "-";
   return new Date(value).toLocaleString();
+}
+
+function formatBytes(bytes) {
+  if (typeof bytes !== "number") return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function statusClass(status) {
@@ -124,639 +227,606 @@ function priorityClass(priority) {
   return `ticket-pill ticket-pill--${String(priority || "").toLowerCase()}`;
 }
 
-function getViewerRole(role) {
-  const normalized = String(role || "").toUpperCase();
-  if (normalized === "ADMIN") return "ADMIN";
-  if (normalized === "TECHNICIAN" || normalized === "STAFF") return "TECHNICIAN";
-  return "USER";
+function extractErrorMessage(error, fallback) {
+  return error?.response?.data?.message || error?.response?.data?.error || error?.message || fallback;
 }
 
-function getNextStatuses(status, role) {
-  const viewerRole = getViewerRole(role);
-  
-  if (status === "OPEN") {
-    // Admin can move to IN_PROGRESS or REJECTED
-    // Technician can move to IN_PROGRESS
-    if (viewerRole === "ADMIN") return ["IN_PROGRESS", "REJECTED"];
-    if (viewerRole === "TECHNICIAN") return ["IN_PROGRESS"];
-  }
-  
-  if (status === "IN_PROGRESS") {
-    // Admin can move to RESOLVED or REJECTED
-    // Technician can move to RESOLVED
-    if (viewerRole === "ADMIN") return ["RESOLVED", "REJECTED"];
-    if (viewerRole === "TECHNICIAN") return ["RESOLVED"];
-  }
-  
-  if (status === "RESOLVED") {
-    // ONLY Admin can move to CLOSED
-    if (viewerRole === "ADMIN") return ["CLOSED"];
-  }
-  
-  return [];
+function appendFormValue(formData, key, value) {
+  if (value === undefined || value === null) return;
+  const stringValue = String(value).trim();
+  if (!stringValue) return;
+  formData.append(key, stringValue);
 }
 
-function buildFilterParams(filters, viewer) {
-  const params = {};
-
-  if (filters.search.trim()) params.search = filters.search.trim();
-  if (filters.status) params.status = filters.status;
-  if (filters.priority) params.priority = filters.priority;
-  if (filters.category) params.category = filters.category;
-
-  const role = getViewerRole(viewer.role);
-  if (role === "USER") {
-    params.reporterEmail = viewer.email.trim().toLowerCase();
-  }
-  if (role === "TECHNICIAN") {
-    params.assignedToEmail = viewer.email.trim().toLowerCase();
-  }
-
-  return params;
-}
-
-function getSlaTone(priority) {
-  switch (priority) {
-    case "LOW":
-      return { background: "#dcfce7", color: "#166534", border: "#86efac" };
-    case "MEDIUM":
-      return { background: "#fef3c7", color: "#92400e", border: "#fcd34d" };
-    case "HIGH":
-      return { background: "#ffedd5", color: "#c2410c", border: "#fdba74" };
-    case "CRITICAL":
-      return { background: "#fee2e2", color: "#b91c1c", border: "#fca5a5" };
-    default:
-      return { background: "#e5e7eb", color: "#374151", border: "#d1d5db" };
-  }
-}
-
-function StatCard({ icon, label, value, accent }) {
+function MetricCard({ icon, label, value, accent, subtext }) {
   return (
     <div className={`ticket-stat-card ticket-stat-card--${accent}`}>
       <div className="ticket-stat-card__icon">{icon}</div>
       <div>
         <div className="ticket-stat-card__label">{label}</div>
         <div className="ticket-stat-card__value">{value}</div>
+        {subtext ? <div className="ticket-stat-card__label">{subtext}</div> : null}
       </div>
     </div>
   );
 }
 
-function PanelTitle({ icon, eyebrow, title, action }) {
+function PanelTitle({ icon, eyebrow, title, action, subtitle }) {
   return (
     <div className="ticket-panel-title">
       <div className="ticket-panel-title__main">
         <div className="ticket-panel-title__icon">{icon}</div>
         <div>
-          {eyebrow ? <div className="ticket-panel-title__eyebrow">{eyebrow}</div> : null}
+          <div className="ticket-panel-title__eyebrow">{eyebrow}</div>
           <h2>{title}</h2>
+          {subtitle ? (
+            <p className="ticket-panel__subcopy" style={{ marginTop: 6 }}>
+              {subtitle}
+            </p>
+          ) : null}
         </div>
       </div>
-      {action ? <div>{action}</div> : null}
+      {action}
     </div>
   );
 }
 
-function SlaMetricCard({ label, priority, createdAt, updatedAt, status, comments, type }) {
-  const sla = getSlaStatus(priority, createdAt, updatedAt, status, comments);
-  const metric = sla[type];
-  const isOverdue = metric.remaining < 0 && metric.met === null;
-  const isMet = metric.met === true;
-  const isMissed = metric.met === false;
+function InfoCard({ label, value, hint, icon }) {
+  return (
+    <div className="ticket-info-card">
+      <span>
+        {icon ? <>{icon} </> : null}
+        {label}
+      </span>
+      <strong>{value || "-"}</strong>
+      {hint ? <small>{hint}</small> : null}
+    </div>
+  );
+}
 
-  let accentColor = "#64748b"; // default
-  if (isOverdue || isMissed) accentColor = "#ef4444";
-  else if (isMet) accentColor = "#10b981";
-  else if (metric.remaining < 3600000) accentColor = "#f59e0b"; // 1h warning
+function SlaCard({ label, detail, tone, meta }) {
+  const colors =
+    tone === "success"
+      ? { background: "rgba(35, 163, 109, 0.12)", color: "#1d865b" }
+      : tone === "danger"
+        ? { background: "rgba(217, 87, 99, 0.14)", color: "#bd4052" }
+        : tone === "warning"
+          ? { background: "rgba(255, 141, 102, 0.14)", color: "#d05d35" }
+          : { background: "rgba(15, 155, 215, 0.12)", color: "#0b78a8" };
 
   return (
-    <div
-      style={{
-        background: "rgba(255,255,255,0.6)",
-        border: `1px solid ${accentColor}33`,
-        borderRadius: "1rem",
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.4rem",
-        padding: "0.8rem 1rem",
-      }}
-    >
-      <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
-        <span style={{ color: "#64748b", fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase" }}>{label}</span>
-        {isMet && <CheckCircle2 size={16} color="#10b981" />}
-        {(isMissed || isOverdue) && <AlertCircle size={16} color="#ef4444" />}
+    <div className="ticket-info-card">
+      <span>{label}</span>
+      <strong style={colors}>{detail}</strong>
+      {meta ? <small>{meta}</small> : null}
+    </div>
+  );
+}
+
+function QueueItem({ ticket, active, onSelect }) {
+  const sla = getSlaStatus(ticket.priority, ticket.createdAt, ticket.updatedAt, ticket.status, ticket.comments || []);
+  const overdue = sla.response.remaining < 0 || sla.resolution.remaining < 0;
+
+  return (
+    <button className={`ticket-queue-item ${active ? "is-active" : ""}`} type="button" onClick={onSelect}>
+      <div className="ticket-queue-item__top">
+        <span className={statusClass(ticket.status)}>{prettyLabel(ticket.status)}</span>
+        <span className={priorityClass(ticket.priority)}>{prettyLabel(ticket.priority)}</span>
       </div>
-      <div style={{ alignItems: "baseline", display: "flex", gap: "0.5rem" }}>
-        <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1e293b" }}>
-          {metric.met === null ? formatSlaRemaining(metric.remaining) : (isMet ? "Goal Met" : "Goal Missed")}
-        </span>
+      <div className="ticket-queue-item__title">Ticket #{ticket.id}</div>
+      <div className="ticket-queue-item__meta">{ticket.resourceName || ticket.location || "Campus issue"}</div>
+      <div className="ticket-queue-item__meta" style={{ marginTop: 8 }}>
+        {ticket.description}
       </div>
-      <div style={{ color: "#94a3b8", fontSize: "0.7rem" }}>
-        Deadline: {metric.deadline.toLocaleString()}
+      <div className="ticket-queue-item__footer">
+        <span>{ticket.assignedStaffName || ticket.assignedToName || "Unassigned"}</span>
+        <span>{overdue ? "SLA attention needed" : formatSlaRemaining(sla.resolution.remaining)}</span>
+      </div>
+    </button>
+  );
+}
+
+function AttachmentCard({ attachment, canDelete, onDelete }) {
+  const downloadUrl = buildTicketAttachmentUrl(attachment);
+
+  return (
+    <div className="ticket-attachment-item">
+      <div>
+        <strong>{attachment.originalFileName || "Attachment"}</strong>
+        <small>
+          {formatBytes(attachment.fileSize)} {attachment.contentType ? `- ${attachment.contentType}` : ""}
+        </small>
+        <small>{formatDate(attachment.createdAt)}</small>
+      </div>
+      <div className="ticket-comment__actions">
+        {downloadUrl ? (
+          <a className="ticket-button ticket-button--ghost" href={downloadUrl} target="_blank" rel="noreferrer">
+            Open
+          </a>
+        ) : null}
+        {canDelete ? (
+          <button className="ticket-button ticket-button--danger" type="button" onClick={onDelete} style={{ padding: "10px 14px" }}>
+            Delete
+          </button>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function SlaBadge({ priority, createdAt, updatedAt, status, comments }) {
-  const sla = getSlaStatus(priority, createdAt, updatedAt, status, comments);
-  const tone = getSlaTone(priority);
+function CommentCard({ comment, viewerEmail, isAdmin, onEdit, onDelete }) {
+  const authorEmail = String(comment.authorEmail || "").toLowerCase();
+  const canEdit = Boolean(comment.editableByRequester || isAdmin || (viewerEmail && authorEmail === viewerEmail.toLowerCase()));
+  const body = comment.body || comment.message || "";
 
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-      <span
-        style={{
-          alignItems: "center",
-          background: tone.background,
-          border: `1px solid ${tone.border}`,
-          borderRadius: "999px",
-          color: tone.color,
-          display: "inline-flex",
-          fontSize: "0.7rem",
-          fontWeight: 700,
-          gap: "0.35rem",
-          padding: "0.25rem 0.6rem",
-        }}
-      >
-        <Clock3 size={12} />
-        {sla.response.label}: {sla.response.met === null ? formatSlaRemaining(sla.response.remaining) : (sla.response.met ? "Met" : "Missed")}
-      </span>
-      <span
-        style={{
-          alignItems: "center",
-          background: tone.background,
-          border: `1px solid ${tone.border}`,
-          borderRadius: "999px",
-          color: tone.color,
-          display: "inline-flex",
-          fontSize: "0.7rem",
-          fontWeight: 700,
-          gap: "0.35rem",
-          padding: "0.25rem 0.6rem",
-        }}
-      >
-        <Clock3 size={12} />
-        {sla.resolution.label}: {sla.resolution.met === null ? formatSlaRemaining(sla.resolution.remaining) : (sla.resolution.met ? "Met" : "Missed")}
-      </span>
+    <div className="ticket-comment">
+      <div className="ticket-comment__header">
+        <div>
+          <strong>{comment.authorName || "Anonymous"}</strong>
+          <small>
+            {comment.authorRole ? prettyLabel(comment.authorRole) : "Reporter"} - {formatDate(comment.createdAt)}
+          </small>
+        </div>
+        {canEdit ? (
+          <div className="ticket-comment__actions">
+            <button className="ticket-button ticket-button--ghost" type="button" onClick={onEdit} style={{ padding: "8px 12px" }}>
+              Edit
+            </button>
+            <button className="ticket-button ticket-button--danger" type="button" onClick={onDelete} style={{ padding: "8px 12px" }}>
+              Delete
+            </button>
+          </div>
+        ) : null}
+      </div>
+      <p>{body}</p>
     </div>
   );
 }
 
 export default function TicketListPage({ forcedRole = null }) {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const initialRole = forcedRole ? getViewerRole(forcedRole) : getViewerRole(user?.role || emptyViewer.role);
-  const pageConfig = rolePageConfig[initialRole] || rolePageConfig.USER;
-  const showTicketBrowser = !pageConfig.showCreatePanel;
+  const { user, loading: authLoading } = useAuth();
+  const activeRole = normalizeRole(forcedRole || user?.role);
+  const userEmail = String(user?.email || "").trim().toLowerCase();
+  const userName = user?.name || "Campus user";
+
   const [tickets, setTickets] = useState([]);
   const [resources, setResources] = useState([]);
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [createForm, setCreateForm] = useState(emptyCreateForm);
-  const [viewer, setViewer] = useState(() => ({
-    ...emptyViewer,
-    id: user?.id || emptyViewer.id,
-    name: user?.name || emptyViewer.name,
-    email: user?.email || emptyViewer.email,
-    role: initialRole,
-  }));
-  const [roleSelection, setRoleSelection] = useState(initialRole);
-  const [rolePassword, setRolePassword] = useState("");
-  const [roleError, setRoleError] = useState("");
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [filters, setFilters] = useState({ search: "", status: "", priority: "", category: "" });
-  const [attachmentFiles, setAttachmentFiles] = useState([]);
-  const [newAttachment, setNewAttachment] = useState(null);
+  const [reportForm, setReportForm] = useState(emptyReportForm(user));
+  const [reportAttachments, setReportAttachments] = useState([]);
+  const [assignment, setAssignment] = useState(emptyAssignment);
+  const [statusUpdate, setStatusUpdate] = useState(emptyStatusUpdate);
+  const [resolutionNotes, setResolutionNotes] = useState("");
   const [commentMessage, setCommentMessage] = useState("");
   const [editingCommentId, setEditingCommentId] = useState(null);
-  const [assignment, setAssignment] = useState(emptyAssignment);
-  const [statusUpdate, setStatusUpdate] = useState({
-    status: "",
-    rejectionReason: "",
-    resolutionNotes: "",
-  });
-  const [resolutionNotes, setResolutionNotes] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const [newAttachment, setNewAttachment] = useState(null);
   const [listLoading, setListLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState({ type: "info", message: "" });
 
-  const isAdmin = getViewerRole(viewer.role) === "ADMIN";
-  const isTechnician = getViewerRole(viewer.role) === "TECHNICIAN";
+  const title = useMemo(() => roleTitle(activeRole), [activeRole]);
+  const queueLabel = useMemo(() => queueScope(activeRole), [activeRole]);
+  const guidance = useMemo(() => roleGuide(activeRole), [activeRole]);
 
-  const chosenResource = useMemo(
-    () => resources.find((resource) => String(resource.id) === String(createForm.resourceId)) || null,
-    [createForm.resourceId, resources],
-  );
+  const resourceOptions = useMemo(() => {
+    return [...resources].sort((a, b) => {
+      const left = `${a.name || ""} ${a.location || ""}`.toLowerCase();
+      const right = `${b.name || ""} ${b.location || ""}`.toLowerCase();
+      return left.localeCompare(right);
+    });
+  }, [resources]);
 
-  useEffect(() => {
-    if (!forcedRole) return;
+  const selectedResource = useMemo(() => {
+    if (!reportForm.resourceId) return null;
+    return resources.find((resource) => String(resource.id) === String(reportForm.resourceId)) || null;
+  }, [reportForm.resourceId, resources]);
 
-    const lockedRole = getViewerRole(forcedRole);
-    setViewer((current) => ({ ...current, role: lockedRole }));
-    setRoleSelection(lockedRole);
-    setShowPasswordForm(false);
-    setRolePassword("");
-    setRoleError("");
-  }, [forcedRole]);
+  const selectedTicketSla = useMemo(() => {
+    if (!selectedTicket) return null;
+    return getSlaStatus(
+      selectedTicket.priority,
+      selectedTicket.createdAt,
+      selectedTicket.updatedAt,
+      selectedTicket.status,
+      selectedTicket.comments || [],
+    );
+  }, [selectedTicket]);
 
-  const stats = useMemo(
-    () => ({
-      total: tickets.length,
-      open: tickets.filter((ticket) => ticket.status === "OPEN").length,
-      inProgress: tickets.filter((ticket) => ticket.status === "IN_PROGRESS").length,
-      resolved: tickets.filter((ticket) => ticket.status === "RESOLVED").length,
-    }),
-    [tickets],
-  );
+  const summary = useMemo(() => {
+    const total = tickets.length;
+    const open = tickets.filter((ticket) => ["OPEN", "IN_PROGRESS"].includes(ticket.status)).length;
+    const assigned = tickets.filter((ticket) => Boolean(ticket.assignedToEmail || ticket.assignedStaffEmail)).length;
+    const overdue = tickets.filter((ticket) => {
+      const sla = getSlaStatus(ticket.priority, ticket.createdAt, ticket.updatedAt, ticket.status, ticket.comments || []);
+      return sla.response.remaining < 0 || sla.resolution.remaining < 0;
+    }).length;
 
-  const statusChoices = useMemo(
-    () => getNextStatuses(selectedTicket?.status, viewer.role),
-    [selectedTicket?.status, viewer.role],
-  );
+    return { total, open, assigned, overdue };
+  }, [tickets]);
 
-  const loadResources = useCallback(async () => {
-    try {
-      const data = await getResources();
-      setResources(data);
-    } catch (error) {
-      setFeedback(error.response?.data?.message || error.message || "Unable to load resources.");
-    }
-  }, []);
-
-  const loadTickets = useCallback(async (keepId = selectedTicketId) => {
-    try {
+  const refreshTickets = useCallback(
+    async (keepId = null) => {
       setListLoading(true);
-      const data = await getTickets(buildFilterParams(filters, viewer));
-      setTickets(data);
+      try {
+        const params = buildFilterParams(filters, activeRole, userEmail);
+        const response = await getTickets(params);
+        const nextTickets = Array.isArray(response) ? response : [];
+        setTickets(nextTickets);
 
-      if (!data.length) {
-        setSelectedTicketId(null);
-        return;
+        const nextSelectedId =
+          (keepId && nextTickets.some((ticket) => ticket.id === keepId) && keepId) ||
+          nextTickets[0]?.id ||
+          null;
+
+        setSelectedTicketId(nextSelectedId);
+        if (!nextSelectedId) {
+          setSelectedTicket(null);
+        }
+      } catch (error) {
+        setFeedback({ type: "error", message: extractErrorMessage(error, "Failed to load tickets.") });
+      } finally {
+        setListLoading(false);
       }
+    },
+    [activeRole, filters, userEmail],
+  );
 
-      const targetId = data.some((ticket) => ticket.id === keepId) ? keepId : data[0].id;
-      setSelectedTicketId(targetId);
-    } catch (error) {
-      setFeedback(error.response?.data?.message || error.message || "Unable to load tickets.");
-    } finally {
-      setListLoading(false);
+  const refreshTicketDetail = useCallback(async (ticketId) => {
+    if (!ticketId) {
+      setSelectedTicket(null);
+      return;
     }
-  }, [filters, selectedTicketId, viewer]);
 
-  const loadTicket = useCallback(async (ticketId) => {
+    setDetailLoading(true);
     try {
-      setDetailLoading(true);
-      const ticket = await getTicketById(ticketId);
-      setSelectedTicket(ticket);
-      setAssignment({
-        assignedTo: ticket.assignedTo || "",
-        assignedToName: ticket.assignedToName || ticket.assignedStaffName || "",
-        assignedToEmail: ticket.assignedToEmail || ticket.assignedStaffEmail || "",
-      });
-      setResolutionNotes(ticket.resolutionNotes || "");
-      const choices = getNextStatuses(ticket.status, viewer.role);
-      setStatusUpdate({
-        status: choices[0] || "",
-        rejectionReason: "",
-        resolutionNotes: ticket.status === "IN_PROGRESS" ? ticket.resolutionNotes || "" : "",
-      });
+      const response = await getTicketById(ticketId);
+      setSelectedTicket(response);
     } catch (error) {
-      setFeedback(error.response?.data?.message || error.message || "Unable to load ticket details.");
+      setFeedback({ type: "error", message: extractErrorMessage(error, `Failed to load ticket #${ticketId}.`) });
     } finally {
       setDetailLoading(false);
     }
-  }, [viewer.role]);
+  }, []);
 
   useEffect(() => {
-    void loadResources();
-  }, [loadResources]);
+    if (authLoading) return;
+
+    setReportForm((current) => {
+      const next = { ...emptyReportForm(user), ...current };
+      if (user?.name) {
+        next.preferredContactName = current.preferredContactName || user.name;
+        next.reporterName = current.reporterName || user.name;
+      }
+      if (user?.email) {
+        next.preferredContactEmail = current.preferredContactEmail || user.email;
+        next.reporterEmail = current.reporterEmail || user.email;
+      }
+      return next;
+    });
+  }, [authLoading, user]);
 
   useEffect(() => {
-    void loadTickets();
-  }, [loadTickets]);
+    if (authLoading) return;
+
+    let active = true;
+    void (async () => {
+      try {
+        const response = await getResources();
+        if (!active) return;
+        setResources(Array.isArray(response) ? response : []);
+      } catch (error) {
+        if (!active) return;
+        setFeedback({ type: "error", message: extractErrorMessage(error, "Failed to load campus resources.") });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [activeRole, authLoading, userEmail]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    void refreshTickets();
+  }, [authLoading, refreshTickets]);
 
   useEffect(() => {
     if (!selectedTicketId) {
       setSelectedTicket(null);
       return;
     }
-    void loadTicket(selectedTicketId);
-  }, [loadTicket, selectedTicketId]);
 
-  function updateViewer(field, value) {
-    setViewer((current) => {
-      const next = { ...current, [field]: field === "role" ? getViewerRole(value) : value };
-      if (field === "name" && !createForm.reporterName) {
-        setCreateForm((form) => ({ ...form, reporterName: value, preferredContactName: form.preferredContactName || value }));
-      }
-      if (field === "email" && !createForm.reporterEmail) {
-        setCreateForm((form) => ({
-          ...form,
-          reporterEmail: value,
-          preferredContactEmail: form.preferredContactEmail || value,
-        }));
-      }
-      return next;
-    });
-    if (field === "role") {
-      setRoleSelection(getViewerRole(value));
-    }
-  }
+    void refreshTicketDetail(selectedTicketId);
+  }, [refreshTicketDetail, selectedTicketId]);
 
-  // Handle role selection with password prompt
-  function handleRoleChange(e) {
-    const selected = e.target.value;
-    setRoleSelection(selected);
-    setRolePassword("");
-    setRoleError("");
-    if (selected === "TECHNICIAN" || selected === "ADMIN") {
-      // Show password input
-      setShowPasswordForm(true);
-      // Do not update viewer.role yet
-    } else {
-      setShowPasswordForm(false);
-      updateViewer("role", selected);
-    }
-  }
-
-  function handleRolePasswordSubmit(e) {
-    e.preventDefault();
-
-    if (
-      (roleSelection === "ADMIN" && rolePassword === "admin") ||
-      (roleSelection === "TECHNICIAN" && rolePassword === "tech")
-    ) {
-      setRoleError("");
-      setShowPasswordForm(false);
-
-      const targetRoute = roleSelection === "ADMIN" ? "/admin-tickets" : "/technician-tickets";
-      updateViewer("role", roleSelection);
-      navigate(targetRoute);
-    } else {
-      setRoleError("Incorrect password");
-    }
-  }
-
-  function handleSignOut() {
-    logout();
-    navigate("/tickets");
-  }
-
-  function updateCreateField(field, value) {
-    setCreateForm((current) => ({ ...current, [field]: value }));
-  }
-
-  async function createTicketItem() {
-    if (attachmentFiles.length > 3) {
-      setFeedback("Please select up to 3 image attachments.");
-      return;
-    }
-
-    if (!createForm.description || createForm.description.length < 10) {
-      setFeedback("Description must be at least 10 characters long.");
-      return;
-    }
-
-    if (!createForm.resourceId && !createForm.location.trim()) {
-      setFeedback("Please select a resource or provide a location.");
-      return;
-    }
-
-    if (!createForm.reporterEmail && !viewer.email) {
-      setFeedback("Reporter email is required. Please fill your profile or the form.");
-      return;
-    }
-
-    const formData = new FormData();
-    // Ensure all required fields are present
-    const payload = {
-      ...createForm,
-      reporterName: createForm.reporterName || viewer.name || "Anonymous",
-      reporterEmail: createForm.reporterEmail || viewer.email || "anonymous@smartcampus.local",
-      preferredContactName: createForm.preferredContactName || createForm.reporterName || viewer.name || "Anonymous",
-      preferredContactEmail: createForm.preferredContactEmail || createForm.reporterEmail || viewer.email || "anonymous@smartcampus.local",
-    };
-
-    Object.entries(payload).forEach(([key, value]) => {
-      if (value !== "" && value !== null && value !== undefined) {
-        formData.append(key, value);
-      }
-    });
-    attachmentFiles.forEach((file) => formData.append("attachments", file));
-
-    try {
-      setBusy(true);
-      console.log("Submitting ticket with payload:", payload);
-      const created = await createTicket(formData);
-      console.log("Ticket created successfully:", created);
-      setFeedback(`Ticket #${created.id} created successfully.`);
-      setAttachmentFiles([]);
-      setCreateForm({
-        ...emptyCreateForm,
-        reporterName: viewer.name,
-        reporterEmail: viewer.email,
-        preferredContactName: viewer.name,
-        preferredContactEmail: viewer.email,
-      });
-      // Important: refresh list and select the new ticket
-      await loadTickets(created.id);
-      setSelectedTicketId(created.id);
-      // Force load the specific ticket detail
-      void loadTicket(created.id);
-    } catch (error) {
-      console.error("Ticket creation failed:", error);
-      const data = error.response?.data;
-      if (data?.message === "Validation failed" && data?.data) {
-        const errorList = Object.entries(data.data)
-          .map(([field, msg]) => `${field}: ${msg}`)
-          .join(", ");
-        setFeedback(`Validation failed - ${errorList}`);
-      } else {
-        setFeedback(data?.message || data?.error?.message || error.message || "Unable to create ticket.");
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function submitAssignment() {
+  useEffect(() => {
     if (!selectedTicket) return;
 
-    try {
-      setBusy(true);
-      await assignTicket(selectedTicket.id, {
-        ...assignment,
-        actorRole: viewer.role,
+    setAssignment({
+      assignedTo: selectedTicket.assignedTo || "",
+      assignedToName: selectedTicket.assignedStaffName || selectedTicket.assignedToName || "",
+      assignedToEmail: selectedTicket.assignedStaffEmail || selectedTicket.assignedToEmail || "",
+    });
+    setStatusUpdate({
+      status: "",
+      rejectionReason: selectedTicket.rejectionReason || "",
+      resolutionNotes: selectedTicket.resolutionNotes || "",
+    });
+    setResolutionNotes(selectedTicket.resolutionNotes || "");
+    setCommentMessage("");
+    setEditingCommentId(null);
+    setNewAttachment(null);
+  }, [selectedTicket?.id]);
+
+  const setFeedbackMessage = useCallback((type, message) => {
+    setFeedback({ type, message });
+  }, []);
+
+  const updateReportField = useCallback(
+    (field, value) => {
+      setReportForm((current) => {
+        if (field === "resourceId") {
+          const resource = resources.find((item) => String(item.id) === String(value));
+          return {
+            ...current,
+            resourceId: value,
+            location: resource?.location || current.location,
+          };
+        }
+
+        return { ...current, [field]: value };
       });
-      setFeedback("Technician assigned successfully.");
-      await loadTickets(selectedTicket.id);
-      await loadTicket(selectedTicket.id);
+    },
+    [resources],
+  );
+
+  const submitReport = useCallback(
+    async (event) => {
+      event.preventDefault();
+
+      if (!reportForm.description.trim()) {
+        setFeedbackMessage("error", "Please add a short description before submitting.");
+        return;
+      }
+
+      if (!reportForm.reporterEmail.trim() || !reportForm.preferredContactEmail.trim()) {
+        setFeedbackMessage("error", "Reporter and contact email are required.");
+        return;
+      }
+
+      setBusy(true);
+      try {
+        const formData = new FormData();
+        appendFormValue(formData, "resourceId", reportForm.resourceId);
+        appendFormValue(formData, "category", reportForm.category);
+        appendFormValue(formData, "location", reportForm.location);
+        appendFormValue(formData, "description", reportForm.description);
+        appendFormValue(formData, "priority", reportForm.priority);
+        appendFormValue(formData, "preferredContactName", reportForm.preferredContactName);
+        appendFormValue(formData, "preferredContactEmail", reportForm.preferredContactEmail);
+        appendFormValue(formData, "preferredContactPhone", reportForm.preferredContactPhone);
+        appendFormValue(formData, "reporterName", reportForm.reporterName);
+        appendFormValue(formData, "reporterEmail", reportForm.reporterEmail);
+        reportAttachments.forEach((file) => {
+          formData.append("attachments", file);
+        });
+
+        const createdTicket = await createTicket(formData);
+        setFeedbackMessage("success", `Ticket #${createdTicket.id} created successfully.`);
+        setReportForm(emptyReportForm(user));
+        setReportAttachments([]);
+        await refreshTickets(createdTicket.id);
+        await refreshTicketDetail(createdTicket.id);
+      } catch (error) {
+        setFeedbackMessage("error", extractErrorMessage(error, "Could not create ticket."));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [refreshTicketDetail, refreshTickets, reportAttachments, reportForm, setFeedbackMessage, user],
+  );
+
+  const submitAssignment = useCallback(async () => {
+    if (!selectedTicket || !canAssignTickets(activeRole)) return;
+
+    setBusy(true);
+    try {
+      await assignTicket(selectedTicket.id, {
+        assignedTo: assignment.assignedTo.trim(),
+        assignedToName: assignment.assignedToName.trim(),
+        assignedToEmail: assignment.assignedToEmail.trim(),
+        actorRole: activeRole,
+      });
+      setFeedbackMessage("success", `Ticket #${selectedTicket.id} assigned successfully.`);
+      await refreshTickets(selectedTicket.id);
+      await refreshTicketDetail(selectedTicket.id);
     } catch (error) {
-      setFeedback(error.response?.data?.message || error.message || "Unable to assign technician.");
+      setFeedbackMessage("error", extractErrorMessage(error, "Could not update assignment."));
     } finally {
       setBusy(false);
     }
-  }
+  }, [activeRole, assignment, refreshTicketDetail, refreshTickets, selectedTicket, setFeedbackMessage]);
 
-  async function submitStatusUpdate() {
+  const submitStatusUpdate = useCallback(async () => {
     if (!selectedTicket || !statusUpdate.status) return;
 
-    if (statusUpdate.status === "REJECTED" && !statusUpdate.rejectionReason.trim()) {
-      setFeedback("Please provide a rejection reason.");
-      return;
-    }
-
-    if (statusUpdate.status === "RESOLVED" && !statusUpdate.resolutionNotes.trim()) {
-      setFeedback("Please provide resolution notes before resolving.");
-      return;
-    }
-
+    setBusy(true);
     try {
-      setBusy(true);
       await updateTicketStatus(selectedTicket.id, {
         status: statusUpdate.status,
-        rejectionReason: statusUpdate.rejectionReason,
-        resolutionNotes: statusUpdate.resolutionNotes,
-        actorEmail: viewer.email,
-        actorRole: viewer.role,
+        rejectionReason: statusUpdate.rejectionReason.trim(),
+        resolutionNotes: statusUpdate.resolutionNotes.trim(),
+        actorEmail: userEmail,
+        actorRole: activeRole,
       });
-      setFeedback("Ticket status updated.");
-      await loadTickets(selectedTicket.id);
-      await loadTicket(selectedTicket.id);
+      setFeedbackMessage("success", `Ticket #${selectedTicket.id} status updated.`);
+      setStatusUpdate(emptyStatusUpdate);
+      await refreshTickets(selectedTicket.id);
+      await refreshTicketDetail(selectedTicket.id);
     } catch (error) {
-      const data = error.response?.data;
-      if (data?.message === "Validation failed" && data?.data) {
-        const errorList = Object.entries(data.data)
-          .map(([field, msg]) => `${field}: ${msg}`)
-          .join(", ");
-        setFeedback(`Validation failed - ${errorList}`);
-      } else {
-        setFeedback(data?.message || error.message || "Unable to update ticket status.");
-      }
+      setFeedbackMessage("error", extractErrorMessage(error, "Could not update status."));
     } finally {
       setBusy(false);
     }
-  }
+  }, [activeRole, refreshTicketDetail, refreshTickets, selectedTicket, setFeedbackMessage, statusUpdate, userEmail]);
 
-  async function submitResolution() {
-    if (!selectedTicket) return;
+  const submitResolution = useCallback(async () => {
+    if (!selectedTicket || !canManageTickets(activeRole)) return;
 
-    const formData = new FormData();
-    formData.append("resolutionNotes", resolutionNotes);
-    formData.append("actorEmail", viewer.email);
-    formData.append("actorRole", viewer.role);
-
+    setBusy(true);
     try {
-      setBusy(true);
+      const formData = new FormData();
+      appendFormValue(formData, "resolutionNotes", resolutionNotes);
+      appendFormValue(formData, "actorEmail", userEmail);
+      appendFormValue(formData, "actorRole", activeRole);
+
       await updateTicketResolution(selectedTicket.id, formData);
-      setFeedback("Resolution notes saved.");
-      await loadTicket(selectedTicket.id);
+      setFeedbackMessage("success", `Resolution notes saved for ticket #${selectedTicket.id}.`);
+      await refreshTicketDetail(selectedTicket.id);
     } catch (error) {
-      setFeedback(error.response?.data?.message || error.message || "Unable to save resolution notes.");
+      setFeedbackMessage("error", extractErrorMessage(error, "Could not save resolution notes."));
     } finally {
       setBusy(false);
     }
-  }
+  }, [activeRole, refreshTicketDetail, resolutionNotes, selectedTicket, setFeedbackMessage, userEmail]);
 
-  async function submitComment() {
+  const submitComment = useCallback(async () => {
     if (!selectedTicket || !commentMessage.trim()) return;
 
+    setBusy(true);
     try {
-      setBusy(true);
       if (editingCommentId) {
         const formData = new FormData();
-        formData.append("actorEmail", viewer.email);
-        formData.append("actorRole", viewer.role);
-        formData.append("body", commentMessage);
+        appendFormValue(formData, "actorEmail", userEmail);
+        appendFormValue(formData, "actorRole", activeRole);
+        appendFormValue(formData, "body", commentMessage);
         await updateTicketComment(selectedTicket.id, editingCommentId, formData);
-        setFeedback("Comment updated.");
+        setFeedbackMessage("success", "Comment updated.");
       } else {
         await addTicketComment(selectedTicket.id, {
-          authorName: viewer.name,
-          authorEmail: viewer.email,
-          authorRole: viewer.role,
+          authorName: userName,
+          authorEmail: userEmail,
+          authorRole: activeRole,
           message: commentMessage,
         });
-        setFeedback("Comment added.");
+        setFeedbackMessage("success", "Comment added.");
       }
 
       setCommentMessage("");
       setEditingCommentId(null);
-      await loadTicket(selectedTicket.id);
+      await refreshTicketDetail(selectedTicket.id);
     } catch (error) {
-      setFeedback(error.response?.data?.message || error.message || "Unable to save comment.");
+      setFeedbackMessage("error", extractErrorMessage(error, "Could not save comment."));
     } finally {
       setBusy(false);
     }
-  }
+  }, [activeRole, commentMessage, editingCommentId, refreshTicketDetail, selectedTicket, setFeedbackMessage, userEmail, userName]);
 
-  async function removeComment(commentId) {
-    if (!selectedTicket) return;
+  const removeComment = useCallback(
+    async (commentId) => {
+      if (!selectedTicket) return;
 
-    try {
       setBusy(true);
-      await deleteTicketComment(selectedTicket.id, commentId, {
-        actorEmail: viewer.email,
-        actorRole: viewer.role,
-      });
-      setFeedback("Comment deleted.");
-      await loadTicket(selectedTicket.id);
-    } catch (error) {
-      setFeedback(error.response?.data?.message || error.message || "Unable to delete comment.");
-    } finally {
-      setBusy(false);
-    }
-  }
+      try {
+        await deleteTicketComment(selectedTicket.id, commentId, {
+          actorEmail: userEmail,
+          actorRole: activeRole,
+        });
+        setFeedbackMessage("success", "Comment deleted.");
+        await refreshTicketDetail(selectedTicket.id);
+      } catch (error) {
+        setFeedbackMessage("error", extractErrorMessage(error, "Could not delete comment."));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [activeRole, refreshTicketDetail, selectedTicket, setFeedbackMessage, userEmail],
+  );
 
-  async function uploadAttachment() {
+  const uploadAttachment = useCallback(async () => {
     if (!selectedTicket || !newAttachment) return;
 
+    setBusy(true);
     try {
-      setBusy(true);
       const formData = new FormData();
       formData.append("attachment", newAttachment);
       await addTicketAttachment(selectedTicket.id, formData);
+      setFeedbackMessage("success", "Attachment uploaded.");
       setNewAttachment(null);
-      setFeedback("Attachment uploaded.");
-      await loadTicket(selectedTicket.id);
+      await refreshTicketDetail(selectedTicket.id);
     } catch (error) {
-      setFeedback(error.response?.data?.message || error.message || "Unable to upload attachment.");
+      setFeedbackMessage("error", extractErrorMessage(error, "Could not upload attachment."));
     } finally {
       setBusy(false);
     }
-  }
+  }, [newAttachment, refreshTicketDetail, selectedTicket, setFeedbackMessage]);
 
-  async function removeAttachment(attachmentId) {
-    if (!selectedTicket) return;
+  const removeAttachment = useCallback(
+    async (attachmentId) => {
+      if (!selectedTicket) return;
 
-    try {
       setBusy(true);
-      await deleteTicketAttachment(selectedTicket.id, attachmentId);
-      setFeedback("Attachment deleted.");
-      await loadTicket(selectedTicket.id);
-    } catch (error) {
-      setFeedback(error.response?.data?.message || error.message || "Unable to delete attachment.");
-    } finally {
-      setBusy(false);
-    }
-  }
+      try {
+        await deleteTicketAttachment(selectedTicket.id, attachmentId);
+        setFeedbackMessage("success", "Attachment deleted.");
+        await refreshTicketDetail(selectedTicket.id);
+      } catch (error) {
+        setFeedbackMessage("error", extractErrorMessage(error, "Could not delete attachment."));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [refreshTicketDetail, selectedTicket, setFeedbackMessage],
+  );
 
-  async function deleteSelectedTicket() {
+  const deleteSelectedTicket = useCallback(async () => {
     if (!selectedTicket) return;
+
     const confirmed = window.confirm(`Delete ticket #${selectedTicket.id}? This action cannot be undone.`);
     if (!confirmed) return;
 
+    setBusy(true);
     try {
-      setBusy(true);
-      await deleteTicket(selectedTicket.id, viewer.role);
-      setFeedback(`Ticket #${selectedTicket.id} deleted.`);
-      await loadTickets();
+      await deleteTicket(selectedTicket.id, activeRole);
+      setFeedbackMessage("success", `Ticket #${selectedTicket.id} deleted.`);
+      setSelectedTicket(null);
+      setSelectedTicketId(null);
+      await refreshTickets();
     } catch (error) {
-      setFeedback(error.response?.data?.message || error.message || "Unable to delete ticket.");
+      setFeedbackMessage("error", extractErrorMessage(error, "Could not delete ticket."));
     } finally {
       setBusy(false);
     }
+  }, [activeRole, refreshTickets, selectedTicket, setFeedbackMessage]);
+
+  const selectedTicketComments = selectedTicket?.comments || [];
+  const selectedTicketAttachments = selectedTicket?.attachments || [];
+  const nextStatuses = useMemo(() => getNextStatuses(selectedTicket?.status, activeRole), [activeRole, selectedTicket?.status]);
+
+  if (authLoading) {
+    return (
+      <section className="tickets-page">
+        <div className="ticket-empty ticket-empty--large">
+          <Clock3 size={24} />
+          <span>Loading campus ticket workspace...</span>
+        </div>
+      </section>
+    );
+  }
+
+  if (!user && !forcedRole) {
+    return (
+      <section className="tickets-page">
+        <div className="ticket-empty ticket-empty--large">
+          <UserCircle2 size={24} />
+          <span>Please sign in to access the campus ticket desk.</span>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -764,196 +834,110 @@ export default function TicketListPage({ forcedRole = null }) {
       <div className="tickets-page__backdrop" />
 
       <header className="tickets-hero">
-        <div className="tickets-hero__copy">
-          <div className="tickets-hero__eyebrow">{pageConfig.eyebrow}</div>
-          <h1>{pageConfig.pageTitle}</h1>
-          <p>{pageConfig.description}</p>
+        <div>
+          <div className="tickets-hero__eyebrow">Campus ticket desk</div>
+          <h1>Real-world maintenance and support workflow for the campus.</h1>
+          <p>{heroCopy(activeRole)}</p>
         </div>
 
         <div className="tickets-hero__stats">
-          <StatCard icon={<ClipboardList size={18} />} label="Visible Tickets" value={stats.total} accent="blue" />
-          <StatCard icon={<AlertTriangle size={18} />} label="Open" value={stats.open} accent="amber" />
-          <StatCard icon={<Wrench size={18} />} label="In Progress" value={stats.inProgress} accent="violet" />
-          <StatCard icon={<CheckCircle2 size={18} />} label="Resolved" value={stats.resolved} accent="green" />
+          <MetricCard icon={<ClipboardList size={20} />} label="Total tickets" value={summary.total} accent="blue" subtext={queueLabel} />
+          <MetricCard icon={<LifeBuoy size={20} />} label="Open incidents" value={summary.open} accent="amber" subtext="Needs active attention" />
+          <MetricCard icon={<ShieldCheck size={20} />} label="Assigned items" value={summary.assigned} accent="violet" subtext="Owned by support staff" />
+          <MetricCard icon={<AlertTriangle size={20} />} label="SLA risk" value={summary.overdue} accent="green" subtext="Overdue response or resolution" />
         </div>
       </header>
 
-      {feedback ? (
-        <div className="tickets-feedback">
-          <AlertCircle size={18} />
-          <span>{feedback}</span>
+      {feedback.message ? (
+        <div
+          className="tickets-feedback"
+          style={
+            feedback.type === "error"
+              ? { background: "linear-gradient(90deg, rgba(147, 28, 39, 0.95), rgba(104, 20, 30, 0.92))" }
+              : feedback.type === "success"
+                ? { background: "linear-gradient(90deg, rgba(20, 117, 87, 0.95), rgba(23, 92, 145, 0.9))" }
+                : undefined
+          }
+        >
+          {feedback.type === "error" ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+          <span>{feedback.message}</span>
         </div>
       ) : null}
 
       <div className="tickets-grid tickets-grid--top">
-        {pageConfig.showRoleSwitcher ? (
-          <section className="ticket-panel">
-            <PanelTitle icon={<UserCircle2 size={18} />} eyebrow="Session Context" title="Acting User" />
+        <section className="ticket-panel">
+          <PanelTitle
+            icon={<UserCircle2 size={18} />}
+            eyebrow="Session overview"
+            title={`${title} workspace`}
+            subtitle={`Current view: ${queueLabel.toLowerCase()}.`}
+          />
 
-            <div className="ticket-form-grid ticket-form-grid--single">
-              <label className="ticket-field">
-                <span>User Id</span>
-                <input value={viewer.id} onChange={(event) => updateViewer("id", event.target.value)} />
-              </label>
-
-              <label className="ticket-field">
-                <span>Name</span>
-                <input value={viewer.name} onChange={(event) => updateViewer("name", event.target.value)} />
-              </label>
-
-              <label className="ticket-field">
-                <span>Email</span>
-                <input value={viewer.email} onChange={(event) => updateViewer("email", event.target.value)} />
-              </label>
-
-              <label className="ticket-field">
-                <span>Role</span>
-                <select value={roleSelection} onChange={handleRoleChange}>
-                  {roleOptions.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
-                {showPasswordForm && (
-                  <form onSubmit={handleRolePasswordSubmit} style={{ marginTop: 8 }}>
-                    <input
-                      type="password"
-                      placeholder={`Enter ${roleSelection.toLowerCase()} password`}
-                      value={rolePassword}
-                      onChange={(event) => setRolePassword(event.target.value)}
-                      style={{ marginRight: 8 }}
-                    />
-                    <button type="submit">Confirm</button>
-                    {roleError ? <div style={{ color: "red", marginTop: 4 }}>{roleError}</div> : null}
-                  </form>
-                )}
-              </label>
-            </div>
-          </section>
-        ) : (
-          <section className="ticket-panel">
-            <PanelTitle
-              icon={<UserCircle2 size={18} />}
-              eyebrow="Role Workspace"
-              title="Active Session"
-              action={
-                <button className="ticket-button ticket-button--danger" type="button" onClick={handleSignOut}>
-                  Sign Out
-                </button>
-              }
-            />
-            <div className="ticket-form-grid ticket-form-grid--single">
-              <label className="ticket-field">
-                <span>User Id</span>
-                <input value={viewer.id} onChange={(event) => updateViewer("id", event.target.value)} />
-              </label>
-              <label className="ticket-field">
-                <span>Name</span>
-                <input value={viewer.name} onChange={(event) => updateViewer("name", event.target.value)} />
-              </label>
-              <label className="ticket-field">
-                <span>Email</span>
-                <input value={viewer.email} onChange={(event) => updateViewer("email", event.target.value)} />
-              </label>
-              <label className="ticket-field">
-                <span>Role</span>
-                <input value={viewer.role} readOnly />
-              </label>
-            </div>
-          </section>
-        )}
-
-        {pageConfig.showCreatePanel ? (
-          <section className="ticket-panel">
-            <PanelTitle
-              icon={<PlusCircle size={18} />}
-              eyebrow="New Incident"
-              title="Create Ticket"
-              action={
-                <button
-                  className="ticket-button ticket-button--ghost"
-                  type="button"
-                  style={{ fontSize: "0.7rem", padding: "4px 8px" }}
-                  onClick={() => {
-                    setCreateForm((f) => ({
-                      ...f,
-                      reporterName: viewer.name,
-                      reporterEmail: viewer.email,
-                      preferredContactName: viewer.name,
-                      preferredContactEmail: viewer.email,
-                    }));
-                  }}
-                >
-                  Fill from Profile
-                </button>
-              }
-            />
-
-            <div className="ticket-panel__intro">
-              <span className="ticket-panel__pill">Enhanced Ticket Builder</span>
-              <p className="ticket-panel__subcopy">
-                Report issues faster with guided fields, resource-aware location auto-fill, and optional image proof.
-              </p>
-            </div>
-
-            {chosenResource ? (
-              <div className="ticket-card ticket-card--summary">
-                <div className="ticket-card__heading">Selected Resource</div>
-                <div className="ticket-card__grid">
-                  <div><strong>{chosenResource.name}</strong></div>
-                  <div>{chosenResource.location}</div>
-                  <div>{prettyLabel(chosenResource.type)}</div>
-                  <div>{prettyLabel(chosenResource.status)}</div>
-                </div>
+          <div className="ticket-card--summary">
+            <div className="ticket-card__heading">What you can do here</div>
+            <div className="ticket-card__grid">
+              <div>
+                <strong>Role:</strong> {title}
               </div>
-            ) : (
-              <div className="ticket-panel__hint">
-                <strong>Tip:</strong> Select a resource to prefill location. If no resource is available, just type the room or area.
+              <div>
+                <strong>Access:</strong> {canManageTickets(activeRole) ? "Queue control, updates, and resolution" : "Issue reporting and progress tracking"}
               </div>
-            )}
+              <div>
+                <strong>Contact:</strong> {userEmail || "No email on profile"}
+              </div>
+              <div>
+                <strong>Reporting mode:</strong> {isReporterRole(activeRole) ? "Direct reporter workflow" : "Operations desk workflow"}
+              </div>
+            </div>
+          </div>
 
+          <div className="ticket-panel__hint">
+            <strong>Recommended workflow:</strong> {guidance[0]} {guidance[1]} {guidance[2]}
+          </div>
+
+          <div className="ticket-detail-grid" style={{ marginTop: 16 }}>
+            <InfoCard label="Open queue scope" value={queueLabel} hint="The list updates with your current role and filters." icon={<ClipboardList size={14} />} />
+            <InfoCard label="Current user" value={userName} hint={userEmail || "No email available"} icon={<Mail size={14} />} />
+          </div>
+        </section>
+
+        <section className="ticket-panel">
+          <PanelTitle
+            icon={<PlusCircle size={18} />}
+            eyebrow="Report intake"
+            title="Report a campus issue"
+            subtitle="Use this form for classroom, lab, network, projector, electrical, security, or facility incidents."
+          />
+
+          <form onSubmit={submitReport}>
             <div className="ticket-form-grid">
-              <label className="ticket-field">
-                <span>Resource</span>
-                <select
-                  value={createForm.resourceId}
-                  onChange={(event) => {
-                    const resId = event.target.value;
-                    updateCreateField("resourceId", resId);
-                    const selectedRes = resources.find((r) => String(r.id) === String(resId));
-                    if (selectedRes) {
-                      setCreateForm((f) => ({
-                        ...f,
-                        location: selectedRes.location || f.location,
-                      }));
-                    }
-                  }}
-                >
-                  <option value="">Select resource</option>
-                  {resources.map((res) => (
-                    <option key={res.id} value={res.id}>
-                      {res.name} ({res.location})
+              <label className="ticket-field ticket-field--full">
+                <span>Linked resource</span>
+                <select value={reportForm.resourceId} onChange={(event) => updateReportField("resourceId", event.target.value)}>
+                  <option value="">No specific resource</option>
+                  {resourceOptions.map((resource) => (
+                    <option key={resource.id} value={resource.id}>
+                      {resource.name} {resource.location ? `- ${resource.location}` : ""} {resource.type ? `(${resource.type})` : ""}
                     </option>
                   ))}
                 </select>
               </label>
 
-              <label className="ticket-field">
+              <label className="ticket-field ticket-field--full">
                 <span>Location</span>
                 <input
-                  value={createForm.location}
-                  onChange={(event) => updateCreateField("location", event.target.value)}
-                  placeholder="Building / Room"
+                  value={reportForm.location}
+                  onChange={(event) => updateReportField("location", event.target.value)}
+                  placeholder={selectedResource?.location || "Main Block, Level 2, Lab 203"}
                 />
               </label>
 
               <label className="ticket-field">
                 <span>Category</span>
-                <select value={createForm.category} onChange={(event) => updateCreateField("category", event.target.value)}>
-                  {categoryOptions.map((item) => (
-                    <option key={item} value={item}>
-                      {prettyLabel(item)}
+                <select value={reportForm.category} onChange={(event) => updateReportField("category", event.target.value)}>
+                  {ticketCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {prettyLabel(category)}
                     </option>
                   ))}
                 </select>
@@ -961,10 +945,10 @@ export default function TicketListPage({ forcedRole = null }) {
 
               <label className="ticket-field">
                 <span>Priority</span>
-                <select value={createForm.priority} onChange={(event) => updateCreateField("priority", event.target.value)}>
-                  {priorityOptions.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
+                <select value={reportForm.priority} onChange={(event) => updateReportField("priority", event.target.value)}>
+                  {ticketPriorities.map((priority) => (
+                    <option key={priority} value={priority}>
+                      {prettyLabel(priority)}
                     </option>
                   ))}
                 </select>
@@ -973,290 +957,223 @@ export default function TicketListPage({ forcedRole = null }) {
               <label className="ticket-field ticket-field--full">
                 <span>Description</span>
                 <textarea
-                  value={createForm.description}
-                  onChange={(event) => updateCreateField("description", event.target.value)}
-                  placeholder="Describe the issue, its impact, and anything already tried."
+                  value={reportForm.description}
+                  onChange={(event) => updateReportField("description", event.target.value)}
+                  placeholder="Describe the issue clearly, mention the room or equipment number, and include any impact on classes or work."
                 />
               </label>
 
               <label className="ticket-field">
-                <span>Preferred Contact Name</span>
+                <span>Preferred contact name</span>
+                <input value={reportForm.preferredContactName} onChange={(event) => updateReportField("preferredContactName", event.target.value)} />
+              </label>
+
+              <label className="ticket-field">
+                <span>Preferred contact email</span>
                 <input
-                  value={createForm.preferredContactName}
-                  onChange={(event) => updateCreateField("preferredContactName", event.target.value)}
-                  placeholder={viewer.name}
+                  type="email"
+                  value={reportForm.preferredContactEmail}
+                  onChange={(event) => updateReportField("preferredContactEmail", event.target.value)}
                 />
               </label>
 
               <label className="ticket-field">
-                <span>Preferred Contact Email</span>
+                <span>Preferred contact phone</span>
                 <input
-                  value={createForm.preferredContactEmail}
-                  onChange={(event) => updateCreateField("preferredContactEmail", event.target.value)}
-                  placeholder={viewer.email}
+                  value={reportForm.preferredContactPhone}
+                  onChange={(event) => updateReportField("preferredContactPhone", event.target.value)}
+                  placeholder="+94 77 123 4567"
                 />
               </label>
 
               <label className="ticket-field">
-                <span>Preferred Contact Phone</span>
-                <input
-                  value={createForm.preferredContactPhone}
-                  onChange={(event) => updateCreateField("preferredContactPhone", event.target.value)}
-                />
+                <span>Reporter name</span>
+                <input value={reportForm.reporterName} onChange={(event) => updateReportField("reporterName", event.target.value)} />
               </label>
 
-              <label className="ticket-field">
-                <span>Reporter Name</span>
-                <input
-                  value={createForm.reporterName}
-                  onChange={(event) => updateCreateField("reporterName", event.target.value)}
-                  placeholder={viewer.name}
-                />
+              <label className="ticket-field ticket-field--full">
+                <span>Reporter email</span>
+                <input type="email" value={reportForm.reporterEmail} onChange={(event) => updateReportField("reporterEmail", event.target.value)} />
               </label>
 
-              <label className="ticket-field">
-                <span>Reporter Email</span>
-                <input
-                  value={createForm.reporterEmail}
-                  onChange={(event) => updateCreateField("reporterEmail", event.target.value)}
-                  placeholder={viewer.email}
-                />
-              </label>
-
-              <label className="ticket-field ticket-field--full ticket-upload">
-                <span>Attachments</span>
+              <div className="ticket-field ticket-field--full ticket-upload">
+                <span>Supporting attachments</span>
                 <input
                   type="file"
+                  accept="image/png,image/jpeg,image/webp,application/pdf"
                   multiple
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(event) => setAttachmentFiles(Array.from(event.target.files || []).slice(0, 3))}
+                  onChange={(event) => setReportAttachments(Array.from(event.target.files || []))}
                 />
-                {attachmentFiles.length ? (
-                  <div className="ticket-upload__list">
-                    {attachmentFiles.map((file) => (
-                      <span key={`${file.name}-${file.size}`} className="ticket-upload__chip">
-                        {file.name}
-                      </span>
+                <div className="ticket-upload__helper">Attach photos, screenshots, or a short PDF note if it helps the technician understand the issue.</div>
+                {reportAttachments.length ? (
+                  <div className="ticket-upload__preview">
+                    {reportAttachments.map((file) => (
+                      <div key={`${file.name}-${file.size}`} className="ticket-upload__preview-item">
+                        <Paperclip size={14} />
+                        <span>{file.name}</span>
+                      </div>
                     ))}
                   </div>
                 ) : null}
-              </label>
+              </div>
             </div>
 
-            <button
-              className="ticket-button ticket-button--primary"
-              type="button"
-              onClick={createTicketItem}
-              disabled={busy}
-              style={{ width: "100%", marginTop: "1rem" }}
-            >
-              {busy ? "Processing..." : "Create Incident Ticket"}
+            <button className="ticket-button ticket-button--primary" type="submit" disabled={busy}>
+              Submit campus ticket
             </button>
-          </section>
-        ) : null}
+          </form>
+        </section>
       </div>
 
-      {showTicketBrowser ? <div className="tickets-grid tickets-grid--main">
-        <aside className="ticket-panel ticket-panel--queue">
+      <div className="tickets-grid tickets-grid--main">
+        <section className="ticket-panel ticket-panel--queue">
           <PanelTitle
             icon={<Filter size={18} />}
-            eyebrow="Browse"
-            title="Ticket Queue"
+            eyebrow="Queue"
+            title="Live ticket list"
+            subtitle="Search, filter, and open the ticket that needs your attention next."
             action={
-              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <span className="ticket-hint">
-                  {isAdmin ? "All" : isTechnician ? "Assigned" : "Yours"}
-                </span>
-                <button
-                  className="ticket-button ticket-button--ghost"
-                  style={{ padding: "4px 8px", fontSize: "0.7rem" }}
-                  onClick={() => loadTickets()}
-                  disabled={listLoading}
-                >
-                  Refresh
-                </button>
-              </div>
+              <button className="ticket-button ticket-button--ghost" type="button" onClick={() => refreshTickets(selectedTicketId)} disabled={listLoading || busy}>
+                Refresh
+              </button>
             }
           />
 
           <div className="ticket-filter-stack">
             <label className="ticket-search">
-              <Search size={16} />
+              <Search size={18} />
               <input
-                placeholder="Search description, location, reporter, or assignee"
                 value={filters.search}
                 onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
+                placeholder="Search by ticket, location, or description"
               />
             </label>
 
-            <label className="ticket-field">
-              <span>Status Filter</span>
-              <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
-                <option value="">All statuses</option>
-                {statusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {prettyLabel(status)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="ticket-form-grid ticket-form-grid--single">
+              <label className="ticket-field">
+                <span>Status</span>
+                <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
+                  <option value="">All statuses</option>
+                  {ticketStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {prettyLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="ticket-field">
-              <span>Priority Filter</span>
-              <select value={filters.priority} onChange={(event) => setFilters((current) => ({ ...current, priority: event.target.value }))}>
-                <option value="">All priorities</option>
-                {priorityOptions.map((priority) => (
-                  <option key={priority} value={priority}>
-                    {priority}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <label className="ticket-field">
+                <span>Priority</span>
+                <select value={filters.priority} onChange={(event) => setFilters((current) => ({ ...current, priority: event.target.value }))}>
+                  <option value="">All priorities</option>
+                  {ticketPriorities.map((priority) => (
+                    <option key={priority} value={priority}>
+                      {prettyLabel(priority)}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="ticket-field">
-              <span>Category Filter</span>
-              <select value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value }))}>
-                <option value="">All categories</option>
-                {categoryOptions.map((category) => (
-                  <option key={category} value={category}>
-                    {prettyLabel(category)}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <label className="ticket-field">
+                <span>Category</span>
+                <select value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value }))}>
+                  <option value="">All categories</option>
+                  {ticketCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {prettyLabel(category)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
 
-          <div className="ticket-queue">
-            {listLoading ? (
-              <div className="ticket-empty">
-                <Clock3 size={18} />
-                <span>Loading tickets...</span>
-              </div>
-            ) : tickets.length ? (
-              tickets.map((ticket) => (
-                <button
-                  key={ticket.id}
-                  type="button"
-                  className={`ticket-queue-item ${selectedTicketId === ticket.id ? "is-active" : ""}`}
-                  onClick={() => setSelectedTicketId(ticket.id)}
-                >
-                  <div className="ticket-queue-item__top">
-                    <strong>#{ticket.id}</strong>
-                    <span className={statusClass(ticket.status)}>{prettyLabel(ticket.status)}</span>
-                  </div>
-
-                  <div className="ticket-queue-item__title">{prettyLabel(ticket.category)}</div>
-                  <div className="ticket-queue-item__meta">{ticket.location}</div>
-
-                  <div className="ticket-queue-item__footer">
-                    <span className={priorityClass(ticket.priority)}>{ticket.priority}</span>
-                    <span>{ticket.assignedToName || ticket.reporterName || "Unknown"}</span>
-                  </div>
-
-                  <div style={{ marginTop: "0.75rem" }}>
-                    <SlaBadge
-                      priority={ticket.priority}
-                      createdAt={ticket.createdAt}
-                      updatedAt={ticket.updatedAt}
-                      status={ticket.status}
-                      comments={ticket.comments || []}
-                    />
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="ticket-empty">
-                <LifeBuoy size={18} />
-                <span>No tickets match the current role and filters.</span>
-              </div>
-            )}
-          </div>
-        </aside>
+          {listLoading ? (
+            <div className="ticket-empty ticket-empty--soft">
+              <Clock3 size={18} />
+              <span>Loading tickets...</span>
+            </div>
+          ) : tickets.length ? (
+            <div className="ticket-queue">
+              {tickets.map((ticket) => (
+                <QueueItem key={ticket.id} ticket={ticket} active={selectedTicketId === ticket.id} onSelect={() => setSelectedTicketId(ticket.id)} />
+              ))}
+            </div>
+          ) : (
+            <div className="ticket-empty ticket-empty--soft">
+              <ClipboardList size={18} />
+              <span>No tickets match the current filters.</span>
+            </div>
+          )}
+        </section>
 
         <section className="ticket-panel ticket-panel--details">
           {selectedTicket ? (
             <div className="ticket-detail">
               <div className="ticket-detail__header">
                 <div>
-                  <div className="ticket-panel-title__eyebrow">Selected Ticket</div>
+                  <div className="tickets-hero__eyebrow">Ticket detail</div>
                   <h2>Ticket #{selectedTicket.id}</h2>
                   <p>{selectedTicket.description}</p>
                 </div>
-
                 <div className="ticket-detail__badges">
                   <span className={statusClass(selectedTicket.status)}>{prettyLabel(selectedTicket.status)}</span>
-                  <span className={priorityClass(selectedTicket.priority)}>{selectedTicket.priority}</span>
-                  <SlaBadge
-                    priority={selectedTicket.priority}
-                    createdAt={selectedTicket.createdAt}
-                    updatedAt={selectedTicket.updatedAt}
-                    status={selectedTicket.status}
-                    comments={selectedTicket.comments || []}
-                  />
+                  <span className={priorityClass(selectedTicket.priority)}>{prettyLabel(selectedTicket.priority)}</span>
+                  <span className="ticket-pill" style={{ background: "rgba(22, 49, 78, 0.08)", color: "#16314e" }}>
+                    {selectedTicket.resourceName || selectedTicket.location || "Campus issue"}
+                  </span>
                 </div>
               </div>
 
               <div className="ticket-info-grid">
-                <div className="ticket-info-card">
-                  <span>Reporter</span>
-                  <strong>{selectedTicket.reporterName}</strong>
-                  <small>{selectedTicket.reporterEmail}</small>
-                </div>
-                <div className="ticket-info-card">
-                  <span>Location</span>
-                  <strong>{selectedTicket.location}</strong>
-                  <small>{selectedTicket.resourceName || "No linked resource"}</small>
-                </div>
-                <div className="ticket-info-card">
-                  <span>Assigned Technician</span>
-                  <strong>{selectedTicket.assignedToName || "Unassigned"}</strong>
-                  <small>{selectedTicket.assignedToEmail || "No technician assigned yet"}</small>
-                </div>
-                <div className="ticket-info-card">
-                  <span>Timeline</span>
-                  <strong>{formatDate(selectedTicket.createdAt)}</strong>
-                  <small>Updated {formatDate(selectedTicket.updatedAt)}</small>
-                </div>
+                <InfoCard label="Reporter" value={selectedTicket.reporterName} hint={selectedTicket.reporterEmail} icon={<UserCircle2 size={14} />} />
+                <InfoCard label="Location" value={selectedTicket.location} hint={selectedTicket.resourceName || "No linked resource"} icon={<MapPin size={14} />} />
+                <InfoCard
+                  label="Assigned technician"
+                  value={selectedTicket.assignedStaffName || selectedTicket.assignedToName || "Unassigned"}
+                  hint={selectedTicket.assignedStaffEmail || selectedTicket.assignedToEmail || "No technician assigned yet"}
+                  icon={<ShieldCheck size={14} />}
+                />
+                <InfoCard label="Timeline" value={formatDate(selectedTicket.createdAt)} hint={`Updated ${formatDate(selectedTicket.updatedAt)}`} icon={<Clock3 size={14} />} />
               </div>
 
-              <div className="ticket-detail-grid">
-                <div className="ticket-detail-section">
-                  <PanelTitle icon={<Clock3 size={18} />} eyebrow="SLA Status" title="Response & Resolution" />
-                  <div style={{ display: "grid", gap: "1rem" }}>
-                    <SlaMetricCard
-                      label="Initial Response"
-                      priority={selectedTicket.priority}
-                      createdAt={selectedTicket.createdAt}
-                      updatedAt={selectedTicket.updatedAt}
-                      status={selectedTicket.status}
-                      comments={selectedTicket.comments}
-                      type="response"
-                    />
-                    <SlaMetricCard
-                      label="Ticket Resolution"
-                      priority={selectedTicket.priority}
-                      createdAt={selectedTicket.createdAt}
-                      updatedAt={selectedTicket.updatedAt}
-                      status={selectedTicket.status}
-                      comments={selectedTicket.comments}
-                      type="resolution"
-                    />
-                  </div>
+              {selectedTicketSla ? (
+                <div className="ticket-info-grid">
+                  <SlaCard
+                    label="Response target"
+                    detail={selectedTicketSla.response.label}
+                    tone={selectedTicketSla.response.met === false ? "danger" : selectedTicketSla.response.met === true ? "success" : "info"}
+                    meta={
+                      selectedTicketSla.response.met === null
+                        ? `Due ${selectedTicketSla.response.deadline.toLocaleString()}`
+                        : formatSlaRemaining(selectedTicketSla.response.remaining)
+                    }
+                  />
+                  <SlaCard
+                    label="Resolution target"
+                    detail={selectedTicketSla.resolution.label}
+                    tone={selectedTicketSla.resolution.met === false ? "danger" : selectedTicketSla.resolution.met === true ? "success" : "warning"}
+                    meta={
+                      selectedTicketSla.resolution.met === null
+                        ? `Due ${selectedTicketSla.resolution.deadline.toLocaleString()}`
+                        : formatSlaRemaining(selectedTicketSla.resolution.remaining)
+                    }
+                  />
+                  <InfoCard label="Comments" value={selectedTicket.comments?.length || 0} hint="Conversation history" icon={<MessageSquareText size={14} />} />
+                  <InfoCard label="Attachments" value={selectedTicket.attachments?.length || 0} hint="Evidence and photos" icon={<Paperclip size={14} />} />
                 </div>
+              ) : null}
 
-                {(isAdmin || isTechnician) && (
+              {canManageTickets(activeRole) ? (
+                <div className="ticket-detail-grid">
                   <div className="ticket-detail-section">
-                    <PanelTitle icon={<AlertTriangle size={18} />} eyebrow="Workflow" title="Update Status" />
+                    <PanelTitle icon={<Wrench size={18} />} eyebrow="Workflow" title="Status update" />
                     <div className="ticket-form-grid ticket-form-grid--single">
                       <label className="ticket-field">
-                        <span>Next Status</span>
-                        <select
-                          value={statusUpdate.status}
-                          onChange={(event) => setStatusUpdate((current) => ({ ...current, status: event.target.value }))}
-                          disabled={!statusChoices.length}
-                        >
-                          <option value="">No valid transition</option>
-                          {statusChoices.map((status) => (
+                        <span>Move to status</span>
+                        <select value={statusUpdate.status} onChange={(event) => setStatusUpdate((current) => ({ ...current, status: event.target.value }))}>
+                          <option value="">Choose a status</option>
+                          {nextStatuses.map((status) => (
                             <option key={status} value={status}>
                               {prettyLabel(status)}
                             </option>
@@ -1264,184 +1181,171 @@ export default function TicketListPage({ forcedRole = null }) {
                         </select>
                       </label>
 
-                      {statusUpdate.status === "REJECTED" && isAdmin && (
+                      {statusUpdate.status === "REJECTED" ? (
                         <label className="ticket-field">
-                          <span>Rejection Reason</span>
+                          <span>Rejection reason</span>
                           <textarea
                             value={statusUpdate.rejectionReason}
-                            onChange={(event) =>
-                              setStatusUpdate((current) => ({ ...current, rejectionReason: event.target.value }))
-                            }
-                            placeholder="Why this ticket is being rejected"
+                            onChange={(event) => setStatusUpdate((current) => ({ ...current, rejectionReason: event.target.value }))}
+                            placeholder="Explain why this request was rejected so the reporter understands the decision."
                           />
                         </label>
-                      )}
+                      ) : null}
 
-                      {statusUpdate.status === "RESOLVED" && (
+                      {statusUpdate.status === "RESOLVED" ? (
                         <label className="ticket-field">
-                          <span>Resolution Notes</span>
+                          <span>Resolution summary</span>
                           <textarea
                             value={statusUpdate.resolutionNotes}
-                            onChange={(event) =>
-                              setStatusUpdate((current) => ({ ...current, resolutionNotes: event.target.value }))
-                            }
-                            placeholder="Explain how the issue was fixed"
+                            onChange={(event) => setStatusUpdate((current) => ({ ...current, resolutionNotes: event.target.value }))}
+                            placeholder="Summarize diagnostics, repair steps, and the final outcome."
                           />
                         </label>
-                      )}
+                      ) : null}
                     </div>
 
-                    <button
-                      className="ticket-button ticket-button--ghost"
-                      type="button"
-                      onClick={submitStatusUpdate}
-                      disabled={busy || !statusUpdate.status}
-                    >
-                      Update Status
+                    <button className="ticket-button ticket-button--ghost" type="button" onClick={submitStatusUpdate} disabled={busy || !statusUpdate.status}>
+                      Update status
                     </button>
                   </div>
-                )}
-              </div>
 
-              {isAdmin && (
-                <div className="ticket-detail-section">
-                  <PanelTitle
-                    icon={<ShieldCheck size={18} />}
-                    eyebrow="Admin Action"
-                    title="Assign Technician"
-                    action={
-                      <button
-                        className="ticket-button ticket-button--ghost"
-                        style={{ fontSize: "0.7rem", padding: "4px 8px" }}
-                        onClick={() => {
-                          setAssignment({
-                            assignedTo: viewer.id,
-                            assignedToName: viewer.name,
-                            assignedToEmail: viewer.email,
-                          });
-                        }}
-                      >
-                        Self-Assign
+                  {canAssignTickets(activeRole) ? (
+                    <div className="ticket-detail-section">
+                      <PanelTitle
+                        icon={<ShieldCheck size={18} />}
+                        eyebrow="Admin action"
+                        title="Assign technician"
+                        action={
+                          <button
+                            className="ticket-button ticket-button--ghost"
+                            style={{ fontSize: "0.7rem", padding: "4px 8px" }}
+                            type="button"
+                            onClick={() => {
+                              setAssignment({
+                                assignedTo: user?.id ? String(user.id) : "",
+                                assignedToName: userName,
+                                assignedToEmail: userEmail,
+                              });
+                            }}
+                          >
+                            Self-assign
+                          </button>
+                        }
+                      />
+                      <div className="ticket-form-grid">
+                        <label className="ticket-field">
+                          <span>Technician id</span>
+                          <input
+                            value={assignment.assignedTo}
+                            onChange={(event) => setAssignment((current) => ({ ...current, assignedTo: event.target.value }))}
+                            placeholder="TECH-001"
+                          />
+                        </label>
+                        <label className="ticket-field">
+                          <span>Technician name</span>
+                          <input
+                            value={assignment.assignedToName}
+                            onChange={(event) => setAssignment((current) => ({ ...current, assignedToName: event.target.value }))}
+                          />
+                        </label>
+                        <label className="ticket-field ticket-field--full">
+                          <span>Technician email</span>
+                          <input
+                            value={assignment.assignedToEmail}
+                            onChange={(event) => setAssignment((current) => ({ ...current, assignedToEmail: event.target.value }))}
+                          />
+                        </label>
+                      </div>
+                      <button className="ticket-button ticket-button--ghost" style={{ marginTop: "1rem" }} type="button" onClick={submitAssignment} disabled={busy}>
+                        Save assignment
                       </button>
-                    }
-                  />
-                  <div className="ticket-form-grid">
-                    <label className="ticket-field">
-                      <span>Technician Id</span>
-                      <input
-                        value={assignment.assignedTo}
-                        onChange={(event) => setAssignment((current) => ({ ...current, assignedTo: event.target.value }))}
-                        placeholder="TECH-001"
-                      />
-                    </label>
-                    <label className="ticket-field">
-                      <span>Technician Name</span>
-                      <input
-                        value={assignment.assignedToName}
-                        onChange={(event) => setAssignment((current) => ({ ...current, assignedToName: event.target.value }))}
-                      />
-                    </label>
-                    <label className="ticket-field ticket-field--full">
-                      <span>Technician Email</span>
-                      <input
-                        value={assignment.assignedToEmail}
-                        onChange={(event) => setAssignment((current) => ({ ...current, assignedToEmail: event.target.value }))}
-                      />
-                    </label>
-                  </div>
-                  <button
-                    className="ticket-button ticket-button--ghost"
-                    style={{ marginTop: "1rem" }}
-                    type="button"
-                    onClick={submitAssignment}
-                    disabled={busy}
-                  >
-                    Save Assignment
-                  </button>
+                    </div>
+                  ) : null}
                 </div>
-              )}
+              ) : null}
 
-              <div className="ticket-detail-grid">
-                {(isAdmin || isTechnician) && (
+              {canManageTickets(activeRole) ? (
+                <div className="ticket-detail-grid">
                   <div className="ticket-detail-section">
-                    <PanelTitle icon={<Wrench size={18} />} eyebrow="Closeout" title="Resolution Notes" />
+                    <PanelTitle icon={<Wrench size={18} />} eyebrow="Closeout" title="Resolution notes" />
                     <label className="ticket-field">
-                      <span>Resolution Summary</span>
+                      <span>Resolution summary</span>
                       <textarea
                         value={resolutionNotes}
                         onChange={(event) => setResolutionNotes(event.target.value)}
-                        placeholder="Summary of diagnostics, repair steps, and final outcome"
+                        placeholder="Summarize the repair, replacement, or follow-up action."
                       />
                     </label>
                     <button className="ticket-button ticket-button--ghost" type="button" onClick={submitResolution} disabled={busy}>
-                      Save Resolution
+                      Save resolution
                     </button>
                   </div>
-                )}
 
+                  <div className="ticket-detail-section">
+                    <PanelTitle icon={<Paperclip size={18} />} eyebrow="Evidence" title="Attachments" />
+                    <div className="ticket-attachment-list">
+                      {selectedTicketAttachments.length ? (
+                        selectedTicketAttachments.map((attachment) => (
+                          <AttachmentCard
+                            key={attachment.id}
+                            attachment={attachment}
+                            canDelete={canManageTickets(activeRole) || selectedTicket.reporterEmail?.toLowerCase() === userEmail}
+                            onDelete={() => removeAttachment(attachment.id)}
+                          />
+                        ))
+                      ) : (
+                        <div className="ticket-empty ticket-empty--soft">No attachments uploaded yet.</div>
+                      )}
+                    </div>
+
+                    <div className="ticket-upload" style={{ marginTop: "1rem" }}>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,application/pdf"
+                        onChange={(event) => setNewAttachment(event.target.files?.[0] || null)}
+                      />
+                    </div>
+
+                    <button className="ticket-button ticket-button--ghost" type="button" onClick={uploadAttachment} disabled={busy || !newAttachment}>
+                      Upload attachment
+                    </button>
+                  </div>
+                </div>
+              ) : (
                 <div className="ticket-detail-section">
                   <PanelTitle icon={<Paperclip size={18} />} eyebrow="Evidence" title="Attachments" />
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: "0.75rem",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                    }}
-                  >
-                    {(selectedTicket.attachments || []).length ? (
-                      selectedTicket.attachments.map((attachment) => (
-                        <div
+                  <div className="ticket-attachment-list">
+                    {selectedTicketAttachments.length ? (
+                      selectedTicketAttachments.map((attachment) => (
+                        <AttachmentCard
                           key={attachment.id}
-                          style={{
-                            background: "rgba(255,255,255,0.78)",
-                            border: "1px solid rgba(15,23,42,0.08)",
-                            borderRadius: "1rem",
-                            overflow: "hidden",
-                            padding: "0.75rem",
-                          }}
-                        >
-                          <img
-                            src={buildTicketAttachmentUrl(attachment)}
-                            alt={attachment.originalFileName}
-                            style={{ aspectRatio: "4 / 3", borderRadius: "0.75rem", objectFit: "cover", width: "100%" }}
-                          />
-                          <div style={{ marginTop: "0.65rem" }}>
-                            <strong style={{ display: "block" }}>{attachment.originalFileName}</strong>
-                            <small>{attachment.contentType}</small>
-                          </div>
-                          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
-                            <a className="ticket-button ticket-button--ghost" href={buildTicketAttachmentUrl(attachment)} target="_blank" rel="noreferrer">
-                              View
-                            </a>
-                            <button className="ticket-button ticket-button--danger" type="button" onClick={() => removeAttachment(attachment.id)}>
-                              Delete
-                            </button>
-                          </div>
-                        </div>
+                          attachment={attachment}
+                          canDelete={selectedTicket.reporterEmail?.toLowerCase() === userEmail}
+                          onDelete={() => removeAttachment(attachment.id)}
+                        />
                       ))
                     ) : (
                       <div className="ticket-empty ticket-empty--soft">No attachments uploaded yet.</div>
                     )}
                   </div>
 
-                  <div className="ticket-upload ticket-upload--compact" style={{ marginTop: "1rem" }}>
+                  <div className="ticket-upload" style={{ marginTop: "1rem" }}>
                     <input
                       type="file"
-                      accept="image/png,image/jpeg,image/webp"
+                      accept="image/png,image/jpeg,image/webp,application/pdf"
                       onChange={(event) => setNewAttachment(event.target.files?.[0] || null)}
                     />
                   </div>
 
                   <button className="ticket-button ticket-button--ghost" type="button" onClick={uploadAttachment} disabled={busy || !newAttachment}>
-                    Upload Attachment
+                    Upload attachment
                   </button>
                 </div>
-              </div>
+              )}
 
               {selectedTicket.rejectionReason ? (
                 <div className="ticket-detail-section">
-                  <PanelTitle icon={<AlertTriangle size={18} />} eyebrow="Rejected" title="Rejection Reason" />
+                  <PanelTitle icon={<AlertTriangle size={18} />} eyebrow="Rejected" title="Rejection reason" />
                   <p>{selectedTicket.rejectionReason}</p>
                 </div>
               ) : null}
@@ -1450,68 +1354,37 @@ export default function TicketListPage({ forcedRole = null }) {
                 <PanelTitle icon={<MessageSquareText size={18} />} eyebrow="Collaboration" title="Comments" />
 
                 <div className="ticket-comments">
-                  {(selectedTicket.comments || []).length ? (
-                    selectedTicket.comments.map((comment) => {
-                      const canEdit =
-                        comment.authorEmail?.toLowerCase() === viewer.email.toLowerCase() || isAdmin;
-
-                      return (
-                        <article
-                          key={comment.id}
-                          className="ticket-comment"
-                          style={{
-                            borderLeft: `4px solid ${canEdit ? "#2563eb" : "#cbd5e1"}`,
-                            borderRadius: "1rem",
-                            padding: "1rem",
-                          }}
-                        >
-                          <div className="ticket-comment__header">
-                            <div>
-                              <strong>{comment.authorName}</strong>
-                              <small>
-                                {comment.authorEmail} | {prettyLabel(comment.authorRole)} | {formatDate(comment.createdAt)}
-                              </small>
-                            </div>
-
-                            {canEdit ? (
-                              <div className="ticket-comment__actions">
-                                <button
-                                  className="ticket-button ticket-button--ghost"
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingCommentId(comment.id);
-                                    setCommentMessage(comment.message || comment.body || "");
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                <button className="ticket-button ticket-button--danger" type="button" onClick={() => removeComment(comment.id)}>
-                                  Delete
-                                </button>
-                              </div>
-                            ) : null}
-                          </div>
-                          <p>{comment.message || comment.body}</p>
-                        </article>
-                      );
-                    })
+                  {selectedTicketComments.length ? (
+                    selectedTicketComments.map((comment) => (
+                      <CommentCard
+                        key={comment.id}
+                        comment={comment}
+                        viewerEmail={userEmail}
+                        isAdmin={normalizeRole(activeRole) === "ADMIN"}
+                        onEdit={() => {
+                          setEditingCommentId(comment.id);
+                          setCommentMessage(comment.body || comment.message || "");
+                        }}
+                        onDelete={() => removeComment(comment.id)}
+                      />
+                    ))
                   ) : (
                     <div className="ticket-empty ticket-empty--soft">No comments yet. Start the thread below.</div>
                   )}
                 </div>
 
                 <label className="ticket-field">
-                  <span>{editingCommentId ? "Edit Comment" : "New Comment"}</span>
+                  <span>{editingCommentId ? "Edit comment" : "New comment"}</span>
                   <textarea
                     value={commentMessage}
                     onChange={(event) => setCommentMessage(event.target.value)}
-                    placeholder="Add an update, note, or follow-up question"
+                    placeholder="Add an update, note, or follow-up question."
                   />
                 </label>
 
                 <div className="ticket-inline-actions">
                   <button className="ticket-button ticket-button--primary" type="button" onClick={submitComment} disabled={busy || !commentMessage.trim()}>
-                    {editingCommentId ? "Save Comment" : "Add Comment"}
+                    {editingCommentId ? "Save comment" : "Add comment"}
                   </button>
 
                   {editingCommentId ? (
@@ -1523,20 +1396,20 @@ export default function TicketListPage({ forcedRole = null }) {
                         setCommentMessage("");
                       }}
                     >
-                      Cancel Edit
+                      Cancel edit
                     </button>
                   ) : null}
                 </div>
               </div>
 
-              {isAdmin && (
+              {canDeleteTickets(activeRole) ? (
                 <div className="ticket-inline-actions" style={{ justifyContent: "flex-end" }}>
                   <button className="ticket-button ticket-button--danger" type="button" onClick={deleteSelectedTicket} disabled={busy}>
                     <Trash2 size={16} />
-                    Delete Ticket
+                    Delete ticket
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
           ) : (
             <div className="ticket-empty ticket-empty--large">
@@ -1545,7 +1418,7 @@ export default function TicketListPage({ forcedRole = null }) {
             </div>
           )}
         </section>
-      </div> : null}
+      </div>
     </section>
   );
 }
