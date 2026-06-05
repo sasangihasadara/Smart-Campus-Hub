@@ -70,7 +70,7 @@ public class BookingService {
     }
 
     public List<BookingResponseDTO> getMyBookings(String userId) {
-        return bookingRepository.findByUserId(userId).stream()
+        return bookingRepository.findByUserIdIgnoreCase(userId).stream()
                 .map(bookingMapper::toResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -78,9 +78,9 @@ public class BookingService {
     public List<BookingResponseDTO> getMyBookingsByStatus(String userId, BookingStatus status) {
         List<Booking> bookings;
         if (status == null) {
-            bookings = bookingRepository.findByUserId(userId);
+            bookings = bookingRepository.findByUserIdIgnoreCase(userId);
         } else {
-            bookings = bookingRepository.findByUserIdAndStatus(userId, status);
+            bookings = bookingRepository.findByUserIdIgnoreCaseAndStatus(userId, status);
         }
         return bookings.stream()
                 .map(bookingMapper::toResponseDTO)

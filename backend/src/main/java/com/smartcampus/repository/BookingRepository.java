@@ -15,12 +15,14 @@ import java.util.List;
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByUserId(String userId);
+    List<Booking> findByUserIdIgnoreCase(String userId);
 
     List<Booking> findByResourceId(Long resourceId);
 
     List<Booking> findByStatus(BookingStatus status);
 
     List<Booking> findByUserIdAndStatus(String userId, BookingStatus status);
+    List<Booking> findByUserIdIgnoreCaseAndStatus(String userId, BookingStatus status);
 
     @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.resource.id = :resourceId " +
            "AND b.date = :date " +

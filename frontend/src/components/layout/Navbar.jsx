@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 const NavLink = ({ to, label, isActive }) => (
   <Link
     to={to}
-    className={`relative group px-1 py-2 font-semibold text-sm transition-colors duration-300 font-sans ${
+    className={`relative group px-1 py-2 font-semibold text-[13px] transition-colors duration-300 font-sans ${
       isActive ? "text-blue-600" : "text-gray-600 hover:text-blue-500"
     }`}
   >
@@ -93,7 +93,7 @@ const Navbar = () => {
               <div className="bg-blue-600 p-2 rounded-lg mr-2 shadow-sm">
                 <LayoutDashboard className="text-white" size={24} />
               </div>
-              <span className="text-xl font-bold text-gray-900 tracking-tight font-heading">
+              <span className="text-lg font-bold text-gray-900 tracking-tight font-heading">
                 Smart<span className="text-blue-600">Campus</span>
               </span>
             </Link>
@@ -111,17 +111,17 @@ const Navbar = () => {
 
           <div className="hidden lg:flex lg:items-center lg:space-x-8 font-heading">
             {user && (
-              <Link to={dashboardPath} className="text-gray-600 hover:text-blue-600 font-semibold text-sm transition-colors">
+              <Link to={dashboardPath} className="text-gray-600 hover:text-blue-600 font-semibold text-[13px] transition-colors">
                 Dashboard
               </Link>
             )}
             {user?.role === "ADMIN" && (
-              <Link to="/admin/bookings" className="text-gray-600 hover:text-blue-600 font-semibold text-sm transition-colors flex items-center gap-1.5">
+              <Link to="/admin/bookings" className="text-gray-600 hover:text-blue-600 font-semibold text-[13px] transition-colors flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
                 Admin Bookings
               </Link>
             )}
-            <Link to="/my-bookings" className="text-gray-600 hover:text-blue-600 font-semibold text-sm transition-colors">
+            <Link to="/my-bookings" className="text-gray-600 hover:text-blue-600 font-semibold text-[13px] transition-colors">
               My Bookings
             </Link>
 
@@ -148,7 +148,7 @@ const Navbar = () => {
               {user ? (
                 <div className="flex items-center gap-3">
                   <div className="hidden xl:block text-right">
-                    <p className="text-sm font-semibold text-gray-800 leading-tight">{user.name}</p>
+                    <p className="text-[13px] font-semibold text-gray-800 leading-tight">{user.name}</p>
                     <p className="text-xs text-gray-500 leading-tight">{user.role}</p>
                   </div>
                   <Link to="/profile" className="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-600 to-sky-500 flex items-center justify-center text-white ring-2 ring-white shadow-sm overflow-hidden transition-transform hover:scale-110">
@@ -202,7 +202,7 @@ const Navbar = () => {
                 key={item.label}
                 to={item.path}
                 onClick={closeMobile}
-                className={`flex items-center px-4 py-3 rounded-xl text-base font-semibold transition-all ${
+                className={`flex items-center px-4 py-3 rounded-xl text-[15px] font-semibold transition-all ${
                   location.pathname === item.path ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
@@ -212,15 +212,15 @@ const Navbar = () => {
             ))}
             {user ? (
               <>
-                <Link to={dashboardPath} onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-base font-semibold text-gray-700 hover:bg-gray-50">
+                <Link to={dashboardPath} onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-[15px] font-semibold text-gray-700 hover:bg-gray-50">
                   Dashboard
                 </Link>
                 {user.role === "ADMIN" && (
-                  <Link to="/admin/bookings" onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-base font-semibold text-gray-700 hover:bg-gray-50">
+                  <Link to="/admin/bookings" onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-[15px] font-semibold text-gray-700 hover:bg-gray-50">
                     Admin Bookings
                   </Link>
                 )}
-                <Link to="/profile" onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-base font-semibold text-gray-700 hover:bg-gray-50">
+                <Link to="/profile" onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-[15px] font-semibold text-gray-700 hover:bg-gray-50">
                   Profile
                 </Link>
                 <button
@@ -230,17 +230,17 @@ const Navbar = () => {
                     closeMobile();
                     navigate("/");
                   }}
-                  className="flex items-center px-4 py-3 rounded-xl text-base font-semibold text-gray-700 hover:bg-gray-50"
+                  className="flex items-center px-4 py-3 rounded-xl text-[15px] font-semibold text-gray-700 hover:bg-gray-50"
                 >
                   Logout
                 </button>
               </>
             ) : (
               <>
-                <Link to="/login" onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-base font-semibold text-gray-700 hover:bg-gray-50">
+                <Link to="/login" onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-[15px] font-semibold text-gray-700 hover:bg-gray-50">
                   Log In
                 </Link>
-                <Link to="/register" onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-base font-semibold text-gray-700 hover:bg-gray-50">
+                <Link to="/register" onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-[15px] font-semibold text-gray-700 hover:bg-gray-50">
                   Register
                 </Link>
               </>

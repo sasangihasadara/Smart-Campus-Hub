@@ -42,8 +42,8 @@ export default function DashboardTopbar() {
   return (
     <header className="resource-header">
       <div className="min-w-0">
-        <div className="text-xs font-bold uppercase tracking-[0.18em] text-blue-500">Operations Dashboard</div>
-        <div className="mt-1 truncate text-xl font-bold text-slate-900">
+        <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-blue-500">Operations Dashboard</div>
+        <div className="mt-1 truncate text-lg font-bold text-slate-900 md:text-xl">
           {user ? `Welcome back, ${user.name}` : "Smart Campus Control Center"}
         </div>
       </div>

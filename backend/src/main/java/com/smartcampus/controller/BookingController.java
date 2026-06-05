@@ -120,7 +120,7 @@ public class BookingController {
         }
 
         return userRepository.findById(jwtUser.id())
-                .or(() -> userRepository.findByEmail(jwtUser.email()))
+                .or(() -> userRepository.findByEmailIgnoreCase(jwtUser.email()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User account was not found"));
     }
 }

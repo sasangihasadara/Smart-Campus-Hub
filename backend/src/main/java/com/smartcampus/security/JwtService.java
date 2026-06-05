@@ -67,9 +67,9 @@ public class JwtService {
             }
 
             return Optional.of(new JwtUser(
-                    Long.valueOf((String) payload.get("sub")),
-                    (String) payload.get("email"),
-                    UserRole.valueOf((String) payload.get("role"))
+                    Long.valueOf(String.valueOf(payload.get("sub"))),
+                    String.valueOf(payload.get("email")),
+                    UserRole.valueOf(String.valueOf(payload.get("role")))
             ));
         } catch (Exception e) {
             return Optional.empty();

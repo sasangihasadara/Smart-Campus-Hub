@@ -1,4 +1,4 @@
 #NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
-#Mon Apr 20 22:33:47 IST 2026
-@default-central-https\://repo.maven.apache.org/maven2/.lastUpdated=1776704627637
-https\://repo.maven.apache.org/maven2/.error=Could not transfer artifact org.springframework.boot\:spring-boot-loader-tools\:pom\:3.5.13 from/to central (https\://repo.maven.apache.org/maven2)\: E\:\\PAFF\\it3030-paf-2026-smart-campus-group26\\.m2-temp\\org\\springframework\\boot\\spring-boot-loader-tools\\3.5.13\\spring-boot-loader-tools-3.5.13.pom.7276292130180564854.tmp.12420872670449600958.tmp
+#Fri Jun 05 16:33:05 IST 2026
+@default-central-https\://repo.maven.apache.org/maven2/.lastUpdated=1780657385292
+https\://repo.maven.apache.org/maven2/.error=Could not transfer artifact org.springframework.boot\:spring-boot-loader-tools\:pom\:3.5.13 from/to central (https\://repo.maven.apache.org/maven2)\: F\:\\it3030-paf-2026-smart-campus-group26-main\\.m2-temp\\org\\springframework\\boot\\spring-boot-loader-tools\\3.5.13\\spring-boot-loader-tools-3.5.13.pom.5623778908104526199.tmp.15606661989491284550.tmp

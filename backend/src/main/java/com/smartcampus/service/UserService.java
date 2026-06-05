@@ -19,6 +19,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -45,8 +46,8 @@ public class UserService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
-        if (userRepository.existsByEmail(email)) {
+        String email = normalizeEmail(request.getEmail());
+        if (findUserByEmail(email).isPresent()) {
             throw new IllegalArgumentException("Email is already registered");
         }
 
@@ -66,11 +67,20 @@ public class UserService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
-        User user = userRepository.findByEmail(email)
+        String email = normalizeEmail(request.getEmail());
+        String password = request.getPassword();
+        if (password == null || password.isBlank()) {
+            throw new IllegalArgumentException("Password is required");
+        }
+
+        User user = findUserByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new IllegalArgumentException("Invalid email or password");
         }
 
@@ -92,9 +102,9 @@ public class UserService {
         }
 
         GoogleProfile profile = verifyGoogleToken(idToken.trim());
-        String email = profile.email().trim().toLowerCase();
+        String email = normalizeEmail(profile.email());
 
-        User user = userRepository.findByEmail(email)
+        User user = findUserByEmail(email)
                 .map(existing -> {
                     if (existing.getRole() == UserRole.ADMIN || existing.getRole() == UserRole.TECHNICIAN) {
                         throw new IllegalArgumentException("Google sign-in is available for user accounts only");
@@ -113,17 +123,17 @@ public class UserService {
     }
 
     public UserResponse getByEmail(String email) {
-        return userRepository.findByEmail(email)
+        return findUserByEmail(email)
                 .map(this::toUserResponse)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
     public AuthResponse updateProfile(String currentEmail, UpdateProfileRequest request) {
-        User user = userRepository.findByEmail(currentEmail)
+        User user = findUserByEmail(currentEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        String newEmail = request.getEmail().trim().toLowerCase();
+        String newEmail = normalizeEmail(request.getEmail());
 
-        userRepository.findByEmail(newEmail)
+        findUserByEmail(newEmail)
                 .filter(existing -> !existing.getId().equals(user.getId()))
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException("Email is already registered");
@@ -149,20 +159,21 @@ public class UserService {
     }
 
     public void deleteProfile(String currentEmail) {
-        User user = userRepository.findByEmail(currentEmail)
+        User user = findUserByEmail(currentEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         userRepository.delete(user);
     }
 
     public User createFixedUser(String name, String email, String password, UserRole role) {
-        String normalizedEmail = email.trim().toLowerCase();
-        return userRepository.findByEmail(normalizedEmail)
-                .orElseGet(() -> userRepository.save(User.builder()
-                        .name(name)
-                        .email(normalizedEmail)
-                        .password(passwordEncoder.encode(password))
-                        .role(role)
-                        .build()));
+        String normalizedEmail = normalizeEmail(email);
+        User user = findUserByEmail(normalizedEmail)
+                .orElseGet(User::new);
+
+        user.setName(name);
+        user.setEmail(normalizedEmail);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setRole(role);
+        return userRepository.save(user);
     }
 
     private AuthResponse toAuthResponse(User user) {
@@ -189,6 +200,19 @@ public class UserService {
 
     private String clean(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        return email.trim().toLowerCase();
+    }
+
+    private java.util.Optional<User> findUserByEmail(String email) {
+        String normalizedEmail = normalizeEmail(email);
+        List<User> users = userRepository.findAllByEmailIgnoreCaseOrderByIdAsc(normalizedEmail);
+        return users.stream().findFirst();
     }
 
     private GoogleProfile verifyGoogleToken(String idToken) {

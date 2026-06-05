@@ -38,7 +38,7 @@ public class NotificationService {
     }
 
     public List<NotificationResponseDTO> getForUser(String recipientEmail) {
-        return notificationRepository.findByRecipientEmailOrderByCreatedAtDesc(recipientEmail).stream()
+        return notificationRepository.findByRecipientEmailIgnoreCaseOrderByCreatedAtDesc(recipientEmail).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -52,7 +52,7 @@ public class NotificationService {
 
     @Transactional
     public void markAllAsRead(String recipientEmail) {
-        notificationRepository.findByRecipientEmailOrderByCreatedAtDesc(recipientEmail)
+        notificationRepository.findByRecipientEmailIgnoreCaseOrderByCreatedAtDesc(recipientEmail)
                 .forEach(notification -> notification.setReadFlag(true));
     }
 

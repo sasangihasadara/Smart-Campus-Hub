@@ -17,5 +17,8 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         userService.createFixedUser("Admin", "admin@PAF.com", "Admin123", UserRole.ADMIN);
         userService.createFixedUser("Technician", "tech@PAF.com", "Tech@123", UserRole.TECHNICIAN);
+        userService.createFixedUser("Student", "student@campus.com", "Student123", UserRole.STUDENT);
+        userService.createFixedUser("Faculty", "faculty@campus.com", "Faculty123", UserRole.FACULTY);
+        userService.createFixedUser("Staff", "staff@campus.com", "Staff123", UserRole.STAFF);
     }
 }
