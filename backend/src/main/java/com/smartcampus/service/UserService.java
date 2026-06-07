@@ -12,6 +12,7 @@ import com.smartcampus.security.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -24,6 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class UserService {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -235,7 +237,10 @@ public class UserService {
 
             String audience = stringValue(payload.get("aud"));
             if (googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals(audience)) {
-                throw new IllegalArgumentException("Google sign-in token was issued for a different client");
+                throw new IllegalArgumentException(
+                        "Google sign-in token was issued for a different client. Expected " + googleClientId +
+                                " but received " + audience + "."
+                );
             }
 
             Object verifiedValue = payload.get("email_verified");
@@ -259,8 +264,13 @@ public class UserService {
             );
         } catch (IllegalArgumentException ex) {
             throw ex;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.error("Google sign-in verification was interrupted", ex);
+            throw new IllegalArgumentException("Google sign-in verification was interrupted. Please try again.");
         } catch (Exception ex) {
-            throw new IllegalArgumentException("Google sign-in failed. Please try again.");
+            log.error("Google sign-in verification failed", ex);
+            throw new IllegalArgumentException("Unable to verify Google sign-in. Check your internet connection and try again.");
         }
     }
 
