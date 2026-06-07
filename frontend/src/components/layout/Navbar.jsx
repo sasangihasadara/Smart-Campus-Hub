@@ -121,9 +121,11 @@ const Navbar = () => {
                 Admin Bookings
               </Link>
             )}
-            <Link to="/my-bookings" className="text-gray-600 hover:text-blue-600 font-semibold text-[13px] transition-colors">
-              Booking history
-            </Link>
+            {user && ["STUDENT", "FACULTY", "STAFF"].includes(user.role) && (
+              <Link to="/booking-history" className="text-gray-600 hover:text-blue-600 font-semibold text-[13px] transition-colors">
+                Booking history
+              </Link>
+            )}
 
             <div className="flex items-center space-x-5 border-l border-gray-100 pl-8">
               <button
@@ -223,6 +225,11 @@ const Navbar = () => {
                 <Link to="/profile" onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-[15px] font-semibold text-gray-700 hover:bg-gray-50">
                   Profile
                 </Link>
+                {["STUDENT", "FACULTY", "STAFF"].includes(user.role) && (
+                  <Link to="/booking-history" onClick={closeMobile} className="flex items-center px-4 py-3 rounded-xl text-[15px] font-semibold text-gray-700 hover:bg-gray-50">
+                    Booking history
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={() => {

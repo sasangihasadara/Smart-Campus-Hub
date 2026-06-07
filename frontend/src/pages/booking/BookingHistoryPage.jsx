@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Calendar,
@@ -7,28 +7,18 @@ import {
     Users,
     AlertCircle,
     CheckCircle2,
-    Clock3,
     XCircle,
     MoreVertical,
     ArrowRight,
     RefreshCw,
     Loader2
 } from 'lucide-react';
-import { cancelBooking, getMyBookings } from '../../services/bookingService';
+import { cancelBooking, getMyBookingsByStatus } from '../../services/bookingService';
 
-const STATUS_TABS = [
-    { id: 'ALL', label: 'All' },
-    { id: 'PENDING', label: 'Pending', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-    { id: 'APPROVED', label: 'Approved', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
-    { id: 'REJECTED', label: 'Rejected', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
-    { id: 'CANCELLED', label: 'Cancelled', color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' }
-];
-
-export default function MyBookings() {
+export default function BookingHistoryPage() {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('ALL');
     const [cancellingId, setCancellingId] = useState(null);
     const [confirmCancelId, setConfirmCancelId] = useState(null);
     const navigate = useNavigate();
@@ -37,7 +27,7 @@ export default function MyBookings() {
         setLoading(true);
         setError(null);
         try {
-            const data = await getMyBookings();
+            const data = await getMyBookingsByStatus('APPROVED');
             setBookings(data);
         } catch (err) {
             setError(err.message);
@@ -50,27 +40,12 @@ export default function MyBookings() {
         fetchBookings();
     }, []);
 
-    const filteredBookings = useMemo(() => {
-        if (activeTab === 'ALL') return bookings;
-        return bookings.filter((booking) => booking.status === activeTab);
-    }, [bookings, activeTab]);
-
-    const counts = useMemo(() => {
-        const countMap = { ALL: bookings.length };
-        STATUS_TABS.slice(1).forEach((tab) => {
-            countMap[tab.id] = bookings.filter((booking) => booking.status === tab.id).length;
-        });
-        return countMap;
-    }, [bookings]);
-
     const handleCancel = async (id) => {
         setCancellingId(id);
         try {
             await cancelBooking(id);
-            setBookings((current) =>
-                current.map((booking) => (booking.id === id ? { ...booking, status: 'CANCELLED' } : booking))
-            );
             setConfirmCancelId(null);
+            await fetchBookings();
         } catch (err) {
             alert(err.message);
         } finally {
@@ -96,36 +71,6 @@ export default function MyBookings() {
         return `${h12}:${minutes} ${ampm}`;
     };
 
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case 'PENDING':
-                return <Clock3 className="text-amber-500" size={16} />;
-            case 'APPROVED':
-                return <CheckCircle2 className="text-green-500" size={16} />;
-            case 'REJECTED':
-                return <XCircle className="text-red-500" size={16} />;
-            case 'CANCELLED':
-                return <AlertCircle className="text-gray-400" size={16} />;
-            default:
-                return null;
-        }
-    };
-
-    const getStatusStyles = (status) => {
-        switch (status) {
-            case 'PENDING':
-                return 'bg-amber-100 text-amber-700 border-amber-200';
-            case 'APPROVED':
-                return 'bg-green-100 text-green-700 border-green-200';
-            case 'REJECTED':
-                return 'bg-red-100 text-red-700 border-red-200';
-            case 'CANCELLED':
-                return 'bg-gray-100 text-gray-600 border-gray-200';
-            default:
-                return 'bg-gray-100 text-gray-700';
-        }
-    };
-
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center py-20 px-4">
@@ -148,29 +93,9 @@ export default function MyBookings() {
     return (
         <div className="max-w-5xl mx-auto px-4 py-8">
             <header className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
-                <p className="text-gray-500 mt-1">Track and manage your resource booking requests.</p>
+                <h1 className="text-3xl font-bold text-gray-900">Booking History</h1>
+                <p className="text-gray-500 mt-1">Showing only bookings approved by admin.</p>
             </header>
-
-            <div className="flex overflow-x-auto pb-2 mb-8 gap-2 no-scrollbar">
-                {STATUS_TABS.map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all border
-                            ${activeTab === tab.id
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-100'
-                                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
-                            }`}
-                    >
-                        {tab.label}
-                        <span className={`px-2 py-0.5 rounded-full text-[10px]
-                            ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                            {counts[tab.id]}
-                        </span>
-                    </button>
-                ))}
-            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
                 {loading ? (
@@ -189,8 +114,8 @@ export default function MyBookings() {
                             </div>
                         </div>
                     ))
-                ) : filteredBookings.length > 0 ? (
-                    filteredBookings.map((booking) => (
+                ) : bookings.length > 0 ? (
+                    bookings.map((booking) => (
                         <div
                             key={booking.id}
                             className="bg-white rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-50/50 transition-all p-6 group"
@@ -201,9 +126,9 @@ export default function MyBookings() {
                                         <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
                                             {booking.resourceName}
                                         </h3>
-                                        <span className={`px-3 py-1 rounded-full text-[11px] font-bold border uppercase flex items-center gap-1.5 ${getStatusStyles(booking.status)}`}>
-                                            {getStatusIcon(booking.status)}
-                                            {booking.status}
+                                        <span className="px-3 py-1 rounded-full text-[11px] font-bold border uppercase flex items-center gap-1.5 bg-green-100 text-green-700 border-green-200">
+                                            <CheckCircle2 className="text-green-500" size={16} />
+                                            APPROVED
                                         </span>
                                     </div>
 
@@ -246,35 +171,33 @@ export default function MyBookings() {
                                 </div>
 
                                 <div className="lg:w-48 shrink-0 flex lg:flex-col gap-2">
-                                    {(booking.status === 'PENDING' || booking.status === 'APPROVED') && (
-                                        confirmCancelId === booking.id ? (
-                                            <div className="w-full space-y-2 animate-in slide-in-from-right-4">
-                                                <p className="text-[10px] font-bold text-red-500 text-center uppercase tracking-tighter">Are you sure?</p>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleCancel(booking.id)}
-                                                        disabled={cancellingId === booking.id}
-                                                        className="flex-1 bg-red-600 text-white text-xs font-bold py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
-                                                    >
-                                                        {cancellingId === booking.id ? <Loader2 size={14} className="animate-spin mx-auto" /> : 'Yes'}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setConfirmCancelId(null)}
-                                                        className="flex-1 bg-gray-100 text-gray-600 text-xs font-bold py-2 rounded-lg hover:bg-gray-200"
-                                                    >
-                                                        Back
-                                                    </button>
-                                                </div>
+                                    {confirmCancelId === booking.id ? (
+                                        <div className="w-full space-y-2 animate-in slide-in-from-right-4">
+                                            <p className="text-[10px] font-bold text-red-500 text-center uppercase tracking-tighter">Are you sure?</p>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleCancel(booking.id)}
+                                                    disabled={cancellingId === booking.id}
+                                                    className="flex-1 bg-red-600 text-white text-xs font-bold py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                                                >
+                                                    {cancellingId === booking.id ? <Loader2 size={14} className="animate-spin mx-auto" /> : 'Yes'}
+                                                </button>
+                                                <button
+                                                    onClick={() => setConfirmCancelId(null)}
+                                                    className="flex-1 bg-gray-100 text-gray-600 text-xs font-bold py-2 rounded-lg hover:bg-gray-200"
+                                                >
+                                                    Back
+                                                </button>
                                             </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => setConfirmCancelId(booking.id)}
-                                                className="w-full flex items-center justify-center gap-2 text-red-500 text-sm font-bold py-2.5 rounded-xl hover:bg-red-50 transition-colors border border-transparent hover:border-red-100"
-                                            >
-                                                <XCircle size={16} />
-                                                Cancel Booking
-                                            </button>
-                                        )
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => setConfirmCancelId(booking.id)}
+                                            className="w-full flex items-center justify-center gap-2 text-red-500 text-sm font-bold py-2.5 rounded-xl hover:bg-red-50 transition-colors border border-transparent hover:border-red-100"
+                                        >
+                                            <XCircle size={16} />
+                                            Cancel Booking
+                                        </button>
                                     )}
                                     <button className="w-full flex items-center justify-center gap-2 text-gray-400 text-sm font-bold py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
                                         <MoreVertical size={16} />
@@ -289,11 +212,9 @@ export default function MyBookings() {
                         <div className="bg-white p-6 rounded-full shadow-xl shadow-gray-200/50 mb-6">
                             <Calendar className="text-gray-300" size={64} />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800">No {activeTab.toLowerCase()} bookings found</h3>
+                        <h3 className="text-xl font-bold text-gray-800">No approved bookings found</h3>
                         <p className="text-gray-500 mt-2 mb-8 text-center max-w-sm">
-                            {activeTab === 'ALL'
-                                ? "You haven't made any resource reservations yet."
-                                : `You don't have any bookings with status ${activeTab.toLowerCase()} at the moment.`}
+                            Once an admin approves one of your booking requests, it will appear here.
                         </p>
                         <button
                             onClick={() => navigate('/available')}

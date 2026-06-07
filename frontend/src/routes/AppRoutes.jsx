@@ -9,6 +9,7 @@ import LoginPage from "../pages/auth/LoginPage";
 import RegisterPage from "../pages/auth/RegisterPage";
 import TechnicianLoginPage from "../pages/auth/TechnicianLoginPage";
 import BookingListPage from "../pages/bookings/BookingListPage";
+import BookingHistoryPage from "../pages/booking/BookingHistoryPage";
 import HomePage from "../pages/home/HomePage";
 import NotificationsPage from "../pages/notifications/NotificationsPage";
 import ProfilePage from "../pages/profile/ProfilePage";
@@ -169,6 +170,14 @@ function AppRoutes() {
           element={(
             <ProtectedRoute allowedRoles={USER_ROLES}>
               <MyBookings />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/booking-history"
+          element={(
+            <ProtectedRoute allowedRoles={USER_ROLES}>
+              <BookingHistoryPage />
             </ProtectedRoute>
           )}
         />
