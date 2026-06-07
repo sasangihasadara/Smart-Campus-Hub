@@ -46,7 +46,7 @@ const UserDashboardPage = () => {
                     <div className="text-sm font-bold uppercase tracking-wide text-slate-500">My pages</div>
                     <div className="mt-4 space-y-3">
                         <RoleLink to="/user/available" label="Available resources" />
-                        <RoleLink to="/my-bookings" label="My bookings" />
+                        <RoleLink to="/my-bookings" label="Bookings" />
                         <RoleLink to="/tickets" label="Raise a ticket" />
                         {showReports && <RoleLink to="/user/reports" label="Resource reports" />}
                         <RoleLink to="/profile" label="Edit profile" />

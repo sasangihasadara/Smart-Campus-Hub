@@ -122,7 +122,7 @@ const Navbar = () => {
               </Link>
             )}
             <Link to="/my-bookings" className="text-gray-600 hover:text-blue-600 font-semibold text-[13px] transition-colors">
-              My Bookings
+              Booking history
             </Link>
 
             <div className="flex items-center space-x-5 border-l border-gray-100 pl-8">
